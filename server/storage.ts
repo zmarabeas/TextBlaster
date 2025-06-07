@@ -101,6 +101,7 @@ export class MemStorage implements IStorage {
       updatedAt: now,
       credits: 10, // Default starter credits
       stripeCustomerId: null,
+      stripeSubscriptionId: null,
       subscriptionTier: "free"
     };
     this.users.set(id, user);
@@ -162,7 +163,10 @@ export class MemStorage implements IStorage {
       id,
       createdAt: now,
       updatedAt: now,
-      lastContactedAt: null
+      lastContactedAt: null,
+      email: clientData.email ?? null,
+      tags: clientData.tags ?? null,
+      notes: clientData.notes ?? null
     };
     this.clients.set(id, client);
     return client;
