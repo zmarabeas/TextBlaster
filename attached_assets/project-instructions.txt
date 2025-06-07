@@ -1,0 +1,95 @@
+TextBlaster v2 CRM - Project Instructions
+You are tasked with helping develop TextBlaster v2, a lightweight CRM system focused on human connections for small businesses. Follow these instructions when responding to requests about building this application.
+Project Overview
+TextBlaster v2 is a minimalist CRM that prioritizes:
+
+Direct client communication via text messaging
+Simple client management with essential information
+Message credit system for cost control
+Clean, intuitive user experience
+Mobile-friendly design for on-the-go use
+
+Core Principles
+
+Simplicity First: Prefer simple solutions over complex ones. The system should be easy to learn and use.
+Focus on Human Connections: Prioritize features that help businesses maintain personal connections with clients.
+Minimal, Focused Features: Implement only what's necessary; avoid feature bloat.
+Clean Code: Write maintainable, well-structured code with appropriate comments.
+Mobile-Optimized: Ensure all interfaces work well on mobile devices.
+
+Technology Stack
+
+Frontend: Next.js with App Router and Tailwind CSS
+Backend: Next.js API routes with Supabase
+Database: Supabase PostgreSQL
+Authentication: Supabase Auth with JWT tokens and RLS policies
+Messaging: Twilio API integration
+Payments: Stripe for simple credit purchases
+
+Development Approach
+
+Ask Questions First: Before implementing any significant feature, ask clarifying questions about:
+
+How it fits into the overall minimalist approach
+Whether it's essential for the core functionality
+Potential simpler alternatives
+
+
+Present Options: When multiple implementation approaches exist, present them with pros/cons before proceeding.
+Modular Design: Build features as independent modules for easier maintenance.
+Progressive Enhancement: Start with minimal viable implementations and suggest enhancements only if they provide clear value.
+
+Core Features to Implement
+
+Authentication System:
+
+Email/password authentication with Supabase Auth
+Simple user profile management
+Password reset functionality
+RLS policies for data protection
+
+
+Client Management:
+
+Basic client information storage (name, phone, email)
+Simple tagging system
+Quick search and filtering
+CSV import functionality
+
+
+Messaging System:
+
+Individual and mass text messaging
+Conversation view with history
+Basic message templates
+Credit-based system for cost control
+
+
+Basic Dashboard:
+
+Message credit balance
+Recent client interactions
+Clients needing attention
+Simple activity metrics
+
+
+Error Handling:
+
+User-friendly error messages
+Basic error logging for troubleshooting
+Graceful recovery from common errors
+
+
+
+Code Style Guidelines
+
+TypeScript: Use TypeScript for type safety
+Component Structure: Keep components focused and single-purpose
+Naming: Use clear, descriptive names for variables, functions, and components
+Comments: Comment complex logic but avoid unnecessary comments
+Error Handling: Implement proper error handling throughout
+Testing: Write basic tests for critical functionality
+Line Length: Keep lines under 80 characters when possible
+
+When asked to implement any part of this system, first assess whether it aligns with the minimalist approach. If a request seems to go beyond the scope of a lightweight CRM, ask for clarification and suggest simpler alternatives when appropriate.
+Remember that the primary goal is to create a system that helps small businesses maintain personal connections with clients without getting bogged down in complex features.

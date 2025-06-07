@@ -1,0 +1,222 @@
+GNS_FUB_CHAT
+Zach Marabeas - zmarabeas@gmail.com - (734)751-0417
+
+Motivation
+
+In today's competitive automotive sales and finance industry, effective communication and marketing strategies are paramount for success. However, existing messaging solutions often present challenges such as complexity, high costs, and inefficient workflows for salespeople. Recognizing these shortcomings, the motivation behind the GNS_FUB_CHAT App project is to revolutionize the way car dealerships and finance businesses interact with customers, streamline marketing efforts, and enhance overall operational efficiency.
+
+Background:
+
+The currently available messaging systems fall short in one or more of the following: 
+
+cost, simplicity, or customization 
+
+Avachato is a cloud-based communication platform tailored for businesses, especially in the automotive industry, aiming to streamline personalized messaging and marketing campaigns. It offers features such as mass texting, automated responses, and lead management to facilitate efficient customer engagement. However, Avachato is known for its robust capabilities but also comes with relatively high costs, which may pose challenges for businesses with budget constraints. Despite this, businesses utilize Avachato for its user-friendly interface and comprehensive messaging solutions, aiming to enhance customer interactions and streamline communication processes.
+
+SlickText is a versatile messaging platform offering comprehensive features like mass texting, automated responses, and detailed analytics for businesses across various industries. With its user-friendly interface and integration capabilities, SlickText enables businesses to engage with their audience effectively. However, its relatively high pricing plans and potential limitations in customization options may pose challenges for some businesses.
+
+Project Broadcast is a messaging solution designed to facilitate communication and marketing campaigns for businesses, including those in the automotive industry. It offers features such as mass texting, automated responses, and lead management, empowering businesses to engage with their audience efficiently. With its user-friendly interface and robust capabilities, Project Broadcast enables businesses to streamline communication processes and enhance customer interactions. However, businesses should be aware of potential limitations in customization options and consider the platform's pricing plans when evaluating its suitability for their needs.
+
+There are hundreds of messaging solutions available, most of which are very similar to the few we outlined above. Others include SimpleTexting, TextMagic, Sakari, and Postscript. Most fail to offer a complete solution without charging high amounts for onboarding fees and support, or high messaging fees.
+
+Technical Description: GNS_FUB_CHAT App
+
+GNS_FUB_CAT App is a streamlined and user-friendly chat application specifically designed to enhance communication and marketing efforts within car dealerships and finance businesses. Unlike competitors such as Avachato, Project Broadcast, and Slick Text, which are known for their complexity, high costs, and cumbersome setup processes, GNS_FUB_CHAT offers a simpler, more cost-effective, and better-designed solution tailored to the needs of our salespeople.
+
+Key Technical Features and Advantages:
+
+Simplicity and Ease of Use:
+
+GNS_FUB_CHAT is intuitively designed with a user-friendly interface, making it easy for salespeople to navigate and utilize its features without extensive training.
+The messaging hub provides a centralized platform for managing customer interactions, mass marketing messages, and responses, minimizing the need for navigating multiple tools or platforms.
+
+Cost-Effectiveness:
+
+GNS_FUB_CHAT is significantly more cost-effective compared to competitors like Avachato, Project Broadcast, and Slick Text, which often come with high subscription fees, setup costs, and additional charges for premium features.
+Our pricing model is transparent and scalable, ensuring affordability for businesses of all sizes without compromising on essential features.
+Customization and Flexibility:
+
+Unlike bulky and rigid solutions offered by competitors, GNS_FUB_CHAT offers a high degree of customization and flexibility to adapt to the unique needs and workflows of car dealerships and finance businesses.
+Salespeople can easily customize message templates, automate responses, and tailor marketing campaigns to target specific customer segments, enhancing engagement and conversion rates.
+
+
+
+
+Quick Setup and Integration:
+
+GNS_FUB_CHAT boasts a hassle-free setup process, allowing businesses to get up and running without the need for extensive technical expertise or lengthy implementation periods.
+Integration with existing systems, such as CRM tools and inventory databases, is seamless, ensuring smooth data flow and enhancing productivity for sales teams.
+
+Conclusion:
+
+GNS_FUB_CHAT App stands out as a simpler, more cost-effective, and better-designed solution compared to competitors like Avachato, Project Broadcast, and Slick Text. With its user-friendly interface, affordability, customization options, quick setup, and reliable performance, GNS_FUB_CHAT empowers salespeople within car dealerships and finance businesses to enhance customer communication, streamline marketing efforts, and drive sales growth effectively.
+
+
+Compliance with Opt-in and Opt-out Rules and User Data Regulations:
+
+GNS_FUB_CHAT App is committed to compliance with opt-in and opt-out rules and user data regulations to ensure transparent and secure communication. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GNS_FUB_CHAT App Breakdown and Timeline
+
+Messaging Application
+Messaging Dock
+Create Mass Text
+Access to the customer database
+Set up auto response scripts
+
+Customer Database
+Stores customer information and potential leads
+Inventory
+Message history
+Transferred customers
+
+Timeline:
+Build Prototype (1-2 weeks)
+UI/UX Design (1 week)
+Build Database (1 week)
+Scale to Multiple Users (1 week)
+
+
+Inventory Generation
+Web scrape Facebook Marketplace (and other platforms)
+Generate list of potential customers
+Automatically message posts that fit given criteria
+Reroute listings from dealerships
+Uniform formatting on GNS_FUB app
+
+Timeline:
+Research and Prototype (1-2 weeks)
+UI/UX Design (1 week)
+Backend development (1 week)
+
+
+
+
+
+
+
+
+Lead Generation
+Pre-Approval Application
+Similar to Canadadrives.com
+Sell My Car Application
+Similar to Canadadrives.com
+
+
+Timeline:
+UI/UX design (1 week)
+Backend development (1 week)
+
+
+AI ad generation
+Input prompt for a video and script
+Auto generate script and video
+Post on socials
+
+Timeline:
+Research technical requirements (1 week)
+Build prototype (1-2 weeks)
+UI/UX design (1 week)
+Integrate with messaging app (1-2 weeks)
+Analytics (2-3 weeks)
+
+
+Total Project Timeline: 
+
+Messaging Application - 4-5 weeks
+Inventory Generation - 3-4 weeks
+Lead Generation (buy/sell application) - 2 weeks
+Lead Generation (AI ads) - 6-9 weeks
+
+Total (without AI ads): 9-11 weeks
+Total (with AI ads): 15-20 weeks
+
+
+
+
+
+
+
+GNS_FUB_CHAT Cost Analysis
+
+Project broadcast:
+$200 / month - 120k messages
+
+Avachato:
+$20 / month - 1 user
+-
+$175 / month - platform fee
+$35 / month - per user
+-
+$50 for 1k messages
+$300 for 10k messages
+$3,000 for 100k messages
+
+SlickText:
+$50 / month - 1k messages
+$189 / month - 5k messages
+$1,250 / month - 50k messages
+
+APP COSTS:
+
+Twilio SMS cost per message (incoming & outgoing): $.0079
+Twilio functions per message (incoming & outgoing): $.0001
+Vercel web hosting: Free
+Firebase Realtime Database: First 1 GiB Free / $5 per GiB
+Approximately 70,000 users with 30 messages to store 1 GiB
+
+PROPOSED PRICE MODEL:
+
+$50 Dollar Subscription Fee (Per User) - 500 free messages
+
+Messaging Prices:
+-------------------------------
+⦁    $1000 = 300,000 messages
+⦁    $500 = 50,000 Messages
+⦁    $250 = 15,000 Messages
+⦁    $200 = 10,000 Messages
+⦁    $100 = 4000 Messages
+⦁    $75 = 2650 Messages
+⦁    $50 = 1750 Messages
+⦁    $25 = 800 Messages
+
+Overview of Canada’s Data Privacy Laws
+
+Personal Information Protection and Electronic Documents Act (PIPEDA)
+‍PIPEDA is the primary federal privacy law in Canada that governs the collection, use, and disclosure of personal information by private sector organizations. It applies to businesses engaged in commercial activities across provincial and national borders. The law has been grandfathered over time and gone through a few revisions along the way. Any company engaged in commercial and transactional activities involving the personal information of Canadian citizens must comply with PIPEDA.
+
+Digital Privacy Act
+This is an amendment to PIPEDA that came into effect in 2015. It introduced several changes, including mandatory breach notification requirements and increased fines for non-compliance and/or failure to report breaches (up to $100,000).
+
+Anti-Spam Legislation (CASL)
+Canada's Anti-Spam Legislation (CASL) governs electronic communications and commercial messages. While not strictly a data privacy law, it imposes requirements on obtaining consent for sending electronic messages, including email and text messages, and contains provisions related to the installation of computer programs. In the event of a violation, offenders may have to pay an administrative monetary penalty (AMP), which can cost up to a maximum of $1 million for an individual, or $10 million for a business.
+
+Quebec
+‍Law 25 — Effective September 2023, Law 25 is designed to provide individuals with more control over their information and the ability to request and access their information from organizations who have it. If an individual requests specific information, organizations must provide it within 30 days or risk penalties and fines of up to $25 million.
+
+Notable Case:
+On February 14, 2024, the British Columbia Civil Resolution Tribunal (the “Tribunal”) found Air Canada liable for misinformation given to a consumer through the use of artificial intelligence chatbots (“AI chatbot”).
+https://www.americanbar.org/groups/business_law/resources/business-law-today/2024-february/bc-tribunal-confirms-companies-remain-liable-information-provided-ai-chatbot/
+
+
+
+
+

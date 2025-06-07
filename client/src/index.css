@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .logo-spin {
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .logo-spin:hover {
+    transform: scale(1.25);
+    animation: spin-360 0.5s ease-in-out;
+  }
+  
+  @keyframes spin-360 {
+    0% {
+      transform: rotate(0deg) scale(1.25);
+    }
+    100% {
+      transform: rotate(360deg) scale(1.25);
+    }
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 20 14.3% 4.1%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    
+    --primary: 50 100% 50%;  /* #FFD600 - Raygun Yellow */
+    --primary-foreground: 20 14.3% 4.1%;
+    
+    --secondary: 39 10% 16%;  /* #2D2A24 - Raygun Dark */
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    
+    --accent: 280 65% 46%;  /* #7B2CBF - Purple */
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 340 95% 60%;  /* #EF476F - Pink Red */
+    --destructive-foreground: 0 0% 98%;
+    
+    --tertiary: 217 100% 61%;  /* #3A86FF - Blue */
+    --success: 162 94% 42%;    /* #06D6A0 - Teal */
+    --warning: 43 100% 52%;    /* #FFBE0B - Amber */
+    
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 280 65% 46%;  /* #7B2CBF - Purple */
+    
+    --radius: 0.5rem;
+
+    --chart-1: 280 65% 46%;
+    --chart-2: 50 100% 50%;
+    --chart-3: 217 100% 61%;
+    --chart-4: 162 94% 42%;
+    --chart-5: 43 100% 52%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 20 14.3% 4.1%;
+    --sidebar-primary: 280 65% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 60 4.8% 95.9%;
+    --sidebar-accent-foreground: 24 9.8% 10%;
+    --sidebar-border: 20 5.9% 90%;
+    --sidebar-ring: 20 14.3% 4.1%;
+  }
+
+  .dark {
+    --background: 39 10% 8%;
+    --foreground: 0 0% 98%;
+    
+    --card: 39 10% 12%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 39 10% 12%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 50 100% 50%;  /* #FFD600 - Raygun Yellow (consistent in dark) */
+    --primary-foreground: 20 14.3% 4.1%;
+    
+    --secondary: 39 10% 16%;  /* #2D2A24 - Raygun Dark (slightly lighter) */
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 39 10% 16%;
+    --muted-foreground: 25 5.3% 64.9%;
+    
+    --accent: 280 65% 56%;  /* #8B3CD6 - Lighter Purple for dark mode */
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 340 95% 70%;  /* #F2567A - Lighter Pink Red */
+    --destructive-foreground: 39 10% 8%;
+    
+    --tertiary: 217 100% 71%;  /* #5A9EFF - Lighter Blue */
+    --success: 162 94% 52%;    /* #0AE6B0 - Lighter Teal */
+    --warning: 43 100% 62%;    /* #FFCE3B - Lighter Amber */
+    
+    --border: 39 10% 20%;
+    --input: 39 10% 20%;
+    --ring: 280 65% 56%;
+    
+    --sidebar-background: 39 10% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 280 65% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 39 10% 16%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 39 10% 20%;
+    --sidebar-ring: 0 0% 98%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  /* Theme transition animations */
+  html {
+    transition: all 0.3s ease;
+  }
+
+  * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+}
+
+@layer components {
+  .message-bubble-out {
+    @apply rounded-[18px] rounded-br-sm;
+  }
+  
+  .message-bubble-in {
+    @apply rounded-[18px] rounded-bl-sm;
+  }
+
+  .theme-toggle {
+    @apply relative inline-flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200;
+  }
+
+  .theme-toggle:hover {
+    @apply scale-105;
+  }
+
+  .theme-toggle-icon {
+    @apply h-4 w-4 transition-all duration-300;
+  }
+
+  .theme-fade-enter {
+    @apply opacity-0 rotate-90 scale-0;
+  }
+
+  .theme-fade-enter-active {
+    @apply opacity-100 rotate-0 scale-100;
+    transition: opacity 300ms ease, transform 300ms ease;
+  }
+
+  .theme-fade-exit {
+    @apply opacity-100 rotate-0 scale-100;
+  }
+
+  .theme-fade-exit-active {
+    @apply opacity-0 -rotate-90 scale-0;
+    transition: opacity 300ms ease, transform 300ms ease;
+  }
+}
