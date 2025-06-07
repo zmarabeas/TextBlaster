@@ -1,0 +1,68 @@
+[00:44:06.975] Running build in Washington, D.C., USA (East) – iad1
+[00:44:06.975] Build machine configuration: 2 cores, 8 GB
+[00:44:06.990] Cloning github.com/zmarabeas/TextBlaster (Branch: main, Commit: 152089d)
+[00:44:07.278] Cloning completed: 288.000ms
+[00:44:08.758] Restored build cache from previous deployment (CzFaCjrwPex8MLouibD2CkjXcsRP)
+[00:44:09.378] Running "vercel build"
+[00:44:09.810] Vercel CLI 42.2.0
+[00:44:10.502] Running "install" command: `npm install`...
+[00:44:12.861] 
+[00:44:12.862] up to date, audited 628 packages in 2s
+[00:44:12.862] 
+[00:44:12.862] 76 packages are looking for funding
+[00:44:12.862]   run `npm fund` for details
+[00:44:12.900] 
+[00:44:12.901] 10 vulnerabilities (8 moderate, 2 high)
+[00:44:12.901] 
+[00:44:12.902] To address issues that do not require attention, run:
+[00:44:12.902]   npm audit fix
+[00:44:12.902] 
+[00:44:12.902] To address all issues (including breaking changes), run:
+[00:44:12.902]   npm audit fix --force
+[00:44:12.903] 
+[00:44:12.903] Run `npm audit` for details.
+[00:44:14.373] 
+[00:44:14.374] up to date, audited 628 packages in 1s
+[00:44:14.374] 
+[00:44:14.374] 76 packages are looking for funding
+[00:44:14.374]   run `npm fund` for details
+[00:44:14.415] 
+[00:44:14.416] 10 vulnerabilities (8 moderate, 2 high)
+[00:44:14.416] 
+[00:44:14.416] To address issues that do not require attention, run:
+[00:44:14.416]   npm audit fix
+[00:44:14.416] 
+[00:44:14.417] To address all issues (including breaking changes), run:
+[00:44:14.417]   npm audit fix --force
+[00:44:14.417] 
+[00:44:14.417] Run `npm audit` for details.
+[00:44:14.541] 
+[00:44:14.541] > rest-express@1.0.0 build
+[00:44:14.541] > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+[00:44:14.542] 
+[00:44:14.907] [36mvite v5.4.14 [32mbuilding for production...[36m[39m
+[00:44:15.236] transforming...
+[00:44:15.330] Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+[00:44:15.330]   npx update-browserslist-db@latest
+[00:44:15.330]   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[00:44:23.206] [32m✓[39m 2668 modules transformed.
+[00:44:23.882] rendering chunks...
+[00:44:23.898] computing gzip size...
+[00:44:23.926] [2m../dist/public/[22m[32mindex.html                           [39m[1m[2m    1.45 kB[22m[1m[22m[2m │ gzip:   0.84 kB[22m
+[00:44:23.926] [2m../dist/public/[22m[2massets/[22m[32mTEXT_BLAST_LOGO-x1WWG6ZN.png  [39m[1m[2m  126.47 kB[22m[1m[22m
+[00:44:23.926] [2m../dist/public/[22m[2massets/[22m[35mindex-BVSu_oDA.css            [39m[1m[2m   86.68 kB[22m[1m[22m[2m │ gzip:  14.48 kB[22m
+[00:44:23.927] [2m../dist/public/[22m[2massets/[22m[36mindex-B8Ov0-ys.js             [39m[1m[33m1,014.13 kB[39m[22m[2m │ gzip: 290.91 kB[22m
+[00:44:23.927] [33m
+[00:44:23.927] (!) Some chunks are larger than 500 kB after minification. Consider:
+[00:44:23.927] - Using dynamic import() to code-split the application
+[00:44:23.927] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[00:44:23.927] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[00:44:23.928] [32m✓ built in 8.72s[39m
+[00:44:23.997] 
+[00:44:23.998]   dist/index.js  58.4kb
+[00:44:23.998] 
+[00:44:23.998] ⚡ Done in 13ms
+[00:44:24.013] Error: No Output Directory named "dist" found after the Build completed. You can configure the Output Directory in your Project Settings.
+[00:44:24.013] Learn More: https://vercel.link/missing-public-directory
+[00:44:24.304] 
+[00:44:27.157] Exiting build container

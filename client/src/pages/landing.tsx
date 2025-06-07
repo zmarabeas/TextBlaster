@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, MessageSquare, Users, Zap, Star, Shield, Clock, TrendingUp, FileText, CreditCard, FolderOpen } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoPath from "@assets/TEXT_BLAST_LOGO.png";
 
 const businessTypes = [
@@ -205,6 +206,7 @@ export default function Landing() {
             </div>
 
             <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <Link href="/login">
                 <Button variant="ghost">Sign In</Button>
               </Link>
