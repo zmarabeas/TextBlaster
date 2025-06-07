@@ -1,7 +1,12 @@
 {
   "version": 2,
   "buildCommand": "vite build",
-  "outputDirectory": "dist",
+  "outputDirectory": "dist/public",
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
