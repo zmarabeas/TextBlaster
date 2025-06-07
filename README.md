@@ -1,6 +1,5 @@
 # TextBlaster CRM
 
-v0.0.1
 A modern SMS marketing and client management platform built with React, Express, and PostgreSQL.
 
 ## Features
