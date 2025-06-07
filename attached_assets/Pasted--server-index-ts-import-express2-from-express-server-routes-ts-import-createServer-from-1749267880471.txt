@@ -1,0 +1,1752 @@
+// server/index.ts
+import express2 from "express";
+
+// server/routes.ts
+import { createServer } from "http";
+
+// shared/schema.ts
+import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+var users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  email: text("email").notNull().unique(),
+  fullName: text("full_name").notNull(),
+  credits: integer("credits").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionTier: text("subscription_tier").default("free")
+});
+var clients = pgTable("clients", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email"),
+  tags: text("tags").array(),
+  notes: text("notes"),
+  lastContactedAt: timestamp("last_contacted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+var messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  content: text("content").notNull(),
+  direction: text("direction").notNull(),
+  // "inbound" or "outbound"
+  status: text("status").notNull(),
+  // "queued", "sent", "delivered", "failed", "undelivered"
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  twilioSid: text("twilio_sid"),
+  // Twilio Message SID
+  errorCode: text("error_code"),
+  // Twilio error code if message failed
+  errorMessage: text("error_message"),
+  // Error message if message failed
+  batchId: text("batch_id"),
+  // Batch ID for mass messages
+  mediaUrls: text("media_urls").array()
+  // URLs of any media attached to message
+});
+var messageTemplates = pgTable("message_templates", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+var creditTransactions = pgTable("credit_transactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  amount: integer("amount").notNull(),
+  type: text("type").notNull(),
+  // "purchase", "usage", "bonus"
+  description: text("description"),
+  stripePaymentId: text("stripe_payment_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+var insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  stripeCustomerId: true,
+  subscriptionTier: true,
+  credits: true
+});
+var insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastContactedAt: true
+});
+var insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  sentAt: true,
+  twilioSid: true,
+  errorCode: true,
+  errorMessage: true,
+  mediaUrls: true
+});
+var insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+var insertCreditTransactionSchema = createInsertSchema(creditTransactions).omit({
+  id: true,
+  createdAt: true
+});
+var userRegisterSchema = insertUserSchema.extend({
+  confirmPassword: z.string().min(6)
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
+});
+var userLoginSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters")
+});
+
+// server/storage.ts
+import { eq, desc } from "drizzle-orm";
+
+// server/supabaseConnection.ts
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+async function createSupabaseConnection() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL environment variable is required");
+  }
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    },
+    max: 10,
+    idleTimeoutMillis: 3e4,
+    connectionTimeoutMillis: 1e4
+  });
+  try {
+    const client2 = await pool.connect();
+    await client2.query("SELECT 1");
+    client2.release();
+    console.log("[database] Successfully connected to Supabase");
+    return drizzle(pool);
+  } catch (error) {
+    console.error("[database] Failed to connect to Supabase:", error);
+    await pool.end();
+    throw error;
+  }
+}
+async function createTables(db) {
+  try {
+    console.log("[database] Creating tables...");
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        credits INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        stripe_customer_id VARCHAR(255),
+        stripe_subscription_id VARCHAR(255),
+        subscription_tier VARCHAR(50) DEFAULT 'free'
+      )
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        first_name VARCHAR(255) NOT NULL,
+        last_name VARCHAR(255) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        email VARCHAR(255),
+        tags TEXT[],
+        notes TEXT,
+        last_contacted_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        direction VARCHAR(20) NOT NULL DEFAULT 'outbound',
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        twilio_sid VARCHAR(255),
+        batch_id VARCHAR(255),
+        error_code VARCHAR(50),
+        error_message TEXT,
+        sent_at TIMESTAMP DEFAULT NOW(),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS message_templates (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS credit_transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount INTEGER NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        description TEXT,
+        stripe_payment_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    console.log("[database] All tables created successfully");
+    return true;
+  } catch (error) {
+    console.error("[database] Failed to create tables:", error);
+    throw error;
+  }
+}
+
+// server/storage.ts
+var MemStorage = class {
+  users;
+  clients;
+  messages;
+  messageTemplates;
+  creditTransactions;
+  userIdCounter;
+  clientIdCounter;
+  messageIdCounter;
+  templateIdCounter;
+  transactionIdCounter;
+  constructor() {
+    this.users = /* @__PURE__ */ new Map();
+    this.clients = /* @__PURE__ */ new Map();
+    this.messages = /* @__PURE__ */ new Map();
+    this.messageTemplates = /* @__PURE__ */ new Map();
+    this.creditTransactions = /* @__PURE__ */ new Map();
+    this.userIdCounter = 1;
+    this.clientIdCounter = 1;
+    this.messageIdCounter = 1;
+    this.templateIdCounter = 1;
+    this.transactionIdCounter = 1;
+  }
+  // User operations
+  async getUser(id) {
+    return this.users.get(id);
+  }
+  async getUserByUsername(username) {
+    return Array.from(this.users.values()).find(
+      (user) => user.username === username
+    );
+  }
+  async createUser(userData) {
+    const id = this.userIdCounter++;
+    const now = /* @__PURE__ */ new Date();
+    const user = {
+      ...userData,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      credits: 10,
+      // Default starter credits
+      stripeCustomerId: null,
+      subscriptionTier: "free"
+    };
+    this.users.set(id, user);
+    return user;
+  }
+  async updateUser(id, data) {
+    const user = await this.getUser(id);
+    if (!user) return void 0;
+    const updatedUser = { ...user, ...data, updatedAt: /* @__PURE__ */ new Date() };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  async updateStripeCustomerId(userId, customerId) {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    const updatedUser = {
+      ...user,
+      stripeCustomerId: customerId,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  async updateUserStripeInfo(userId, stripeInfo) {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    const updatedUser = {
+      ...user,
+      stripeCustomerId: stripeInfo.customerId,
+      subscriptionTier: "premium",
+      // Assume premium tier when subscription is added
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  // Client operations
+  async getClient(id) {
+    return this.clients.get(id);
+  }
+  async getClientsByUserId(userId) {
+    return Array.from(this.clients.values()).filter(
+      (client2) => client2.userId === userId
+    );
+  }
+  async createClient(clientData) {
+    const id = this.clientIdCounter++;
+    const now = /* @__PURE__ */ new Date();
+    const client2 = {
+      ...clientData,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      lastContactedAt: null
+    };
+    this.clients.set(id, client2);
+    return client2;
+  }
+  async updateClient(id, data) {
+    const client2 = await this.getClient(id);
+    if (!client2) return void 0;
+    const updatedClient = { ...client2, ...data, updatedAt: /* @__PURE__ */ new Date() };
+    this.clients.set(id, updatedClient);
+    return updatedClient;
+  }
+  async deleteClient(id) {
+    return this.clients.delete(id);
+  }
+  async getClientsByTags(userId, tags) {
+    return Array.from(this.clients.values()).filter(
+      (client2) => client2.userId === userId && client2.tags && tags.some((tag) => client2.tags?.includes(tag))
+    );
+  }
+  async getClientsByPhoneNumber(phoneNumber) {
+    const cleanedPhone = phoneNumber.replace(/\D/g, "");
+    return Array.from(this.clients.values()).filter((client2) => {
+      const cleanedClientPhone = client2.phone.replace(/\D/g, "");
+      return cleanedClientPhone.endsWith(cleanedPhone) || cleanedPhone.endsWith(cleanedClientPhone);
+    });
+  }
+  // Message operations
+  async getMessage(id) {
+    return this.messages.get(id);
+  }
+  async getMessagesByClientId(clientId) {
+    return Array.from(this.messages.values()).filter(
+      (message) => message.clientId === clientId
+    ).sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
+  }
+  async createMessage(messageData) {
+    const id = this.messageIdCounter++;
+    const now = /* @__PURE__ */ new Date();
+    const message = {
+      ...messageData,
+      id,
+      sentAt: now,
+      twilioSid: null,
+      errorCode: null,
+      errorMessage: null,
+      mediaUrls: null,
+      batchId: messageData.batchId || null
+    };
+    this.messages.set(id, message);
+    return message;
+  }
+  async getMessageByTwilioSid(twilioSid) {
+    return Array.from(this.messages.values()).find(
+      (message) => message.twilioSid === twilioSid
+    );
+  }
+  async getMessagesByBatchId(batchId) {
+    return Array.from(this.messages.values()).filter(
+      (message) => message.batchId === batchId
+    );
+  }
+  async updateMessageStatus(id, status) {
+    const message = await this.getMessage(id);
+    if (!message) return void 0;
+    const updatedMessage = { ...message, status };
+    this.messages.set(id, updatedMessage);
+    return updatedMessage;
+  }
+  async updateMessageError(id, errorDetails) {
+    const message = await this.getMessage(id);
+    if (!message) return void 0;
+    const updatedMessage = {
+      ...message,
+      status: "failed",
+      errorCode: errorDetails.errorCode,
+      errorMessage: errorDetails.errorMessage
+    };
+    this.messages.set(id, updatedMessage);
+    return updatedMessage;
+  }
+  async createMessageBatch(userId, messages2) {
+    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const createdMessages = [];
+    for (const messageData of messages2) {
+      const message = await this.createMessage({
+        ...messageData,
+        batchId
+      });
+      createdMessages.push(message);
+    }
+    return {
+      batchId,
+      messages: createdMessages
+    };
+  }
+  // Message template operations
+  async getMessageTemplates(userId) {
+    return Array.from(this.messageTemplates.values()).filter(
+      (template) => template.userId === userId
+    );
+  }
+  async createMessageTemplate(templateData) {
+    const id = this.templateIdCounter++;
+    const now = /* @__PURE__ */ new Date();
+    const template = {
+      ...templateData,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.messageTemplates.set(id, template);
+    return template;
+  }
+  async updateMessageTemplate(id, data) {
+    const template = this.messageTemplates.get(id);
+    if (!template) return void 0;
+    const updatedTemplate = { ...template, ...data, updatedAt: /* @__PURE__ */ new Date() };
+    this.messageTemplates.set(id, updatedTemplate);
+    return updatedTemplate;
+  }
+  async deleteMessageTemplate(id) {
+    return this.messageTemplates.delete(id);
+  }
+  // Credit operations
+  async addCredits(userId, amount, type, description, stripePaymentId) {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    await this.updateUser(userId, { credits: user.credits + amount });
+    const id = this.transactionIdCounter++;
+    const transaction = {
+      id,
+      userId,
+      amount,
+      type,
+      description: description || "",
+      stripePaymentId: stripePaymentId || null,
+      createdAt: /* @__PURE__ */ new Date()
+    };
+    this.creditTransactions.set(id, transaction);
+    return transaction;
+  }
+  async useCredits(userId, amount, description) {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    if (user.credits < amount) throw new Error("Insufficient credits");
+    await this.updateUser(userId, { credits: user.credits - amount });
+    const id = this.transactionIdCounter++;
+    const transaction = {
+      id,
+      userId,
+      amount: -amount,
+      type: "usage",
+      description: description || "Message credit usage",
+      stripePaymentId: null,
+      createdAt: /* @__PURE__ */ new Date()
+    };
+    this.creditTransactions.set(id, transaction);
+    return transaction;
+  }
+  async getUserCredits(userId) {
+    const user = await this.getUser(userId);
+    return user?.credits || 0;
+  }
+  async getCreditTransactions(userId) {
+    return Array.from(this.creditTransactions.values()).filter((transaction) => transaction.userId === userId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+};
+var PostgreSQLStorage = class {
+  db;
+  constructor() {
+    this.db = null;
+  }
+  async initialize() {
+    this.db = await createSupabaseConnection();
+    return this;
+  }
+  // User operations
+  async getUser(id) {
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+  async getUserByUsername(username) {
+    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+  async createUser(userData) {
+    const result = await this.db.insert(users).values(userData).returning();
+    return result[0];
+  }
+  async updateUser(id, data) {
+    const result = await this.db.update(users).set(data).where(eq(users.id, id)).returning();
+    return result[0];
+  }
+  async updateStripeCustomerId(userId, customerId) {
+    const result = await this.db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, userId)).returning();
+    return result[0];
+  }
+  async updateUserStripeInfo(userId, stripeInfo) {
+    const result = await this.db.update(users).set({
+      stripeCustomerId: stripeInfo.customerId,
+      stripeSubscriptionId: stripeInfo.subscriptionId
+    }).where(eq(users.id, userId)).returning();
+    return result[0];
+  }
+  // Client operations
+  async getClient(id) {
+    const result = await this.db.select().from(clients).where(eq(clients.id, id)).limit(1);
+    return result[0];
+  }
+  async getClientsByUserId(userId) {
+    return await this.db.select().from(clients).where(eq(clients.userId, userId)).orderBy(desc(clients.createdAt));
+  }
+  async createClient(clientData) {
+    const result = await this.db.insert(clients).values(clientData).returning();
+    return result[0];
+  }
+  async updateClient(id, data) {
+    const result = await this.db.update(clients).set(data).where(eq(clients.id, id)).returning();
+    return result[0];
+  }
+  async deleteClient(id) {
+    const result = await this.db.delete(clients).where(eq(clients.id, id)).returning();
+    return result.length > 0;
+  }
+  async getClientsByTags(userId, tags) {
+    const allClients = await this.getClientsByUserId(userId);
+    return allClients.filter(
+      (client2) => client2.tags && client2.tags.some((tag) => tags.includes(tag))
+    );
+  }
+  async getClientsByPhoneNumber(phoneNumber) {
+    return await this.db.select().from(clients).where(eq(clients.phone, phoneNumber));
+  }
+  // Message operations
+  async getMessage(id) {
+    const result = await this.db.select().from(messages).where(eq(messages.id, id)).limit(1);
+    return result[0];
+  }
+  async getMessagesByClientId(clientId) {
+    return await this.db.select().from(messages).where(eq(messages.clientId, clientId)).orderBy(desc(messages.sentAt));
+  }
+  async createMessage(messageData) {
+    const result = await this.db.insert(messages).values(messageData).returning();
+    return result[0];
+  }
+  async getMessageByTwilioSid(twilioSid) {
+    const result = await this.db.select().from(messages).where(eq(messages.twilioSid, twilioSid)).limit(1);
+    return result[0];
+  }
+  async getMessagesByBatchId(batchId) {
+    return await this.db.select().from(messages).where(eq(messages.batchId, batchId)).orderBy(desc(messages.sentAt));
+  }
+  async updateMessageStatus(id, status) {
+    const result = await this.db.update(messages).set({ status }).where(eq(messages.id, id)).returning();
+    return result[0];
+  }
+  async updateMessageError(id, errorDetails) {
+    const result = await this.db.update(messages).set({
+      errorCode: errorDetails.errorCode,
+      errorMessage: errorDetails.errorMessage
+    }).where(eq(messages.id, id)).returning();
+    return result[0];
+  }
+  async createMessageBatch(userId, messageList) {
+    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    const messagesWithBatch = messageList.map((msg) => ({ ...msg, batchId }));
+    const result = await this.db.insert(messages).values(messagesWithBatch).returning();
+    return { batchId, messages: result };
+  }
+  // Message template operations
+  async getMessageTemplates(userId) {
+    return await this.db.select().from(messageTemplates).where(eq(messageTemplates.userId, userId)).orderBy(desc(messageTemplates.createdAt));
+  }
+  async createMessageTemplate(templateData) {
+    const result = await this.db.insert(messageTemplates).values(templateData).returning();
+    return result[0];
+  }
+  async updateMessageTemplate(id, data) {
+    const result = await this.db.update(messageTemplates).set(data).where(eq(messageTemplates.id, id)).returning();
+    return result[0];
+  }
+  async deleteMessageTemplate(id) {
+    const result = await this.db.delete(messageTemplates).where(eq(messageTemplates.id, id)).returning();
+    return result.length > 0;
+  }
+  // Credit operations
+  async addCredits(userId, amount, type, description, stripePaymentId) {
+    const transactionData = {
+      userId,
+      amount,
+      type,
+      description: description || `Added ${amount} credits`,
+      stripePaymentId
+    };
+    const result = await this.db.insert(creditTransactions).values(transactionData).returning();
+    return result[0];
+  }
+  async useCredits(userId, amount, description) {
+    const transactionData = {
+      userId,
+      amount: -amount,
+      type: "usage",
+      description: description || `Used ${amount} credits`
+    };
+    const result = await this.db.insert(creditTransactions).values(transactionData).returning();
+    return result[0];
+  }
+  async getUserCredits(userId) {
+    const transactions = await this.db.select().from(creditTransactions).where(eq(creditTransactions.userId, userId));
+    return transactions.reduce((total, transaction) => total + transaction.amount, 0);
+  }
+  async getCreditTransactions(userId) {
+    return await this.db.select().from(creditTransactions).where(eq(creditTransactions.userId, userId)).orderBy(desc(creditTransactions.createdAt));
+  }
+};
+var storageInstance;
+async function initStorage() {
+  if (process.env.DATABASE_URL) {
+    try {
+      const pgStorage = new PostgreSQLStorage();
+      await pgStorage.initialize();
+      console.log("[storage] Using PostgreSQL storage with Supabase");
+      return pgStorage;
+    } catch (error) {
+      console.log("[storage] PostgreSQL connection failed, falling back to memory storage");
+      console.log("[storage] Error:", error instanceof Error ? error.message : "Unknown error");
+    }
+  }
+  console.log("[storage] Using in-memory storage");
+  return new MemStorage();
+}
+storageInstance = new MemStorage();
+initStorage().then((storage2) => {
+  storageInstance = storage2;
+});
+var storage = new Proxy({}, {
+  get(target, prop) {
+    return storageInstance[prop];
+  }
+});
+
+// server/routes.ts
+import bcrypt from "bcryptjs";
+import { z as z2 } from "zod";
+import session from "express-session";
+import MemoryStore from "memorystore";
+
+// server/vite.ts
+import express from "express";
+import fs from "fs";
+import path2 from "path";
+import { createServer as createViteServer, createLogger } from "vite";
+
+// vite.config.ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+var vite_config_default = defineConfig({
+  plugins: [
+    react(),
+    runtimeErrorOverlay(),
+    ...process.env.NODE_ENV !== "production" && process.env.REPL_ID !== void 0 ? [
+      await import("@replit/vite-plugin-cartographer").then(
+        (m) => m.cartographer()
+      )
+    ] : []
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path.resolve(import.meta.dirname, "shared"),
+      "@assets": path.resolve(import.meta.dirname, "attached_assets")
+    }
+  },
+  root: path.resolve(import.meta.dirname, "client"),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true
+  }
+});
+
+// server/vite.ts
+import { nanoid } from "nanoid";
+var viteLogger = createLogger();
+function log(message, source = "express") {
+  const formattedTime = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
+async function setupVite(app2, server) {
+  const serverOptions = {
+    middlewareMode: true,
+    hmr: { server },
+    allowedHosts: true
+  };
+  const vite = await createViteServer({
+    ...vite_config_default,
+    configFile: false,
+    customLogger: {
+      ...viteLogger,
+      error: (msg, options) => {
+        viteLogger.error(msg, options);
+        process.exit(1);
+      }
+    },
+    server: serverOptions,
+    appType: "custom"
+  });
+  app2.use(vite.middlewares);
+  app2.use("*", async (req, res, next) => {
+    const url = req.originalUrl;
+    try {
+      const clientTemplate = path2.resolve(
+        import.meta.dirname,
+        "..",
+        "client",
+        "index.html"
+      );
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      template = template.replace(
+        `src="/src/main.tsx"`,
+        `src="/src/main.tsx?v=${nanoid()}"`
+      );
+      const page = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+    } catch (e) {
+      vite.ssrFixStacktrace(e);
+      next(e);
+    }
+  });
+}
+function serveStatic(app2) {
+  const distPath = path2.resolve(import.meta.dirname, "public");
+  if (!fs.existsSync(distPath)) {
+    throw new Error(
+      `Could not find the build directory: ${distPath}, make sure to build the client first`
+    );
+  }
+  app2.use(express.static(distPath));
+  app2.use("*", (_req, res) => {
+    res.sendFile(path2.resolve(distPath, "index.html"));
+  });
+}
+
+// server/twilio/webhooks.ts
+async function handleMessageStatusUpdate(req, res) {
+  try {
+    const {
+      MessageSid,
+      MessageStatus,
+      ErrorCode,
+      ErrorMessage
+    } = req.body;
+    log(`Received status update for message ${MessageSid}: ${MessageStatus}`, "twilio");
+    const message = await storage.getMessageByTwilioSid(MessageSid);
+    if (!message) {
+      log(`Message with Twilio SID ${MessageSid} not found in database`, "twilio");
+      return res.status(404).send({
+        success: false,
+        message: "Message not found"
+      });
+    }
+    await storage.updateMessageStatus(message.id, MessageStatus);
+    if (ErrorCode) {
+      log(`Error for message ${MessageSid}: ${ErrorCode} - ${ErrorMessage}`, "twilio");
+      await storage.updateMessageError(message.id, {
+        errorCode: ErrorCode,
+        errorMessage: ErrorMessage
+      });
+    }
+    return res.status(200).send({
+      success: true
+    });
+  } catch (error) {
+    log(`Error processing message status update: ${error}`, "twilio");
+    return res.status(500).send({
+      success: false,
+      message: "Error processing webhook"
+    });
+  }
+}
+async function handleIncomingMessage(req, res) {
+  try {
+    const {
+      From,
+      To,
+      Body,
+      MessageSid
+    } = req.body;
+    log(`Received incoming message from ${From} to ${To}: ${Body}`, "twilio");
+    const clients2 = await storage.getClientsByPhoneNumber(From);
+    if (clients2.length === 0) {
+      log(`No client found with phone number ${From}`, "twilio");
+      return res.status(200).send();
+    }
+    const client2 = clients2[0];
+    const messageData = {
+      clientId: client2.id,
+      userId: client2.userId,
+      content: Body,
+      direction: "inbound",
+      status: "received"
+    };
+    const message = await storage.createMessage(messageData);
+    if (message && MessageSid) {
+      await storage.updateMessageStatus(message.id, "received");
+    }
+    return res.status(200).send();
+  } catch (error) {
+    log(`Error processing incoming message: ${error}`, "twilio");
+    return res.status(500).send({
+      success: false,
+      message: "Error processing webhook"
+    });
+  }
+}
+async function getMessageBatchStatus(req, res) {
+  try {
+    const { batchId } = req.params;
+    if (!batchId) {
+      return res.status(400).send({
+        success: false,
+        message: "Batch ID is required"
+      });
+    }
+    const messages2 = await storage.getMessagesByBatchId(batchId);
+    if (messages2.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "No messages found for this batch"
+      });
+    }
+    const statusCounts = messages2.reduce((counts, message) => {
+      const status = message.status || "unknown";
+      counts[status] = (counts[status] || 0) + 1;
+      return counts;
+    }, {});
+    const totalMessages = messages2.length;
+    const deliveredMessages = statusCounts["delivered"] || 0;
+    const failedMessages = statusCounts["failed"] || 0;
+    const undeliveredMessages = statusCounts["undelivered"] || 0;
+    const progress = {
+      total: totalMessages,
+      delivered: deliveredMessages,
+      failed: failedMessages + undeliveredMessages,
+      queued: statusCounts["queued"] || 0,
+      sent: statusCounts["sent"] || 0,
+      deliveredPercentage: Math.round(deliveredMessages / totalMessages * 100),
+      failedPercentage: Math.round((failedMessages + undeliveredMessages) / totalMessages * 100),
+      inProgressPercentage: Math.round(((statusCounts["queued"] || 0) + (statusCounts["sent"] || 0)) / totalMessages * 100),
+      isComplete: deliveredMessages + failedMessages + undeliveredMessages === totalMessages,
+      statusCounts
+    };
+    return res.status(200).send({
+      success: true,
+      progress
+    });
+  } catch (error) {
+    log(`Error getting batch status: ${error}`, "twilio");
+    return res.status(500).send({
+      success: false,
+      message: "Error getting batch status"
+    });
+  }
+}
+
+// server/twilio/client.ts
+import twilio from "twilio";
+var accountSid = process.env.TWILIO_ACCOUNT_SID;
+var authToken = process.env.TWILIO_AUTH_TOKEN;
+var twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+var messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+var client = null;
+function initTwilioClient() {
+  if (!accountSid || !authToken) {
+    log("Twilio credentials are missing. SMS functionality will be unavailable.", "twilio");
+    return;
+  }
+  try {
+    client = twilio(accountSid, authToken);
+    log("Twilio client initialized successfully", "twilio");
+  } catch (error) {
+    log(`Error initializing Twilio client: ${error}`, "twilio");
+    client = null;
+  }
+}
+async function sendSms(to, body, statusCallback) {
+  if (!client) {
+    log("Twilio client is not initialized", "twilio");
+    return null;
+  }
+  if (!to || !body) {
+    log("Missing required parameters for sending SMS", "twilio");
+    return null;
+  }
+  try {
+    const messageOptions = {
+      to,
+      body,
+      statusCallback
+    };
+    if (messagingServiceSid) {
+      messageOptions.messagingServiceSid = messagingServiceSid;
+    } else if (twilioPhoneNumber) {
+      messageOptions.from = twilioPhoneNumber;
+    } else {
+      log("No Twilio phone number or messaging service SID provided", "twilio");
+      return null;
+    }
+    const message = await client.messages.create(messageOptions);
+    log(`SMS sent successfully to ${to}, SID: ${message.sid}`, "twilio");
+    return message;
+  } catch (error) {
+    log(`Error sending SMS to ${to}: ${error}`, "twilio");
+    return null;
+  }
+}
+async function sendBatchSms(messages2, statusCallback) {
+  if (!client) {
+    log("Twilio client is not initialized", "twilio");
+    return messages2.map((msg) => ({
+      success: false,
+      to: msg.to,
+      messageId: msg.messageId,
+      error: "Twilio client is not initialized"
+    }));
+  }
+  const results = [];
+  for (const message of messages2) {
+    try {
+      const sentMessage = await sendSms(message.to, message.body, statusCallback);
+      if (sentMessage) {
+        results.push({
+          success: true,
+          to: message.to,
+          messageSid: sentMessage.sid,
+          messageId: message.messageId
+        });
+      } else {
+        results.push({
+          success: false,
+          to: message.to,
+          messageId: message.messageId,
+          error: "Failed to send message"
+        });
+      }
+    } catch (error) {
+      results.push({
+        success: false,
+        to: message.to,
+        messageId: message.messageId,
+        error: `Error: ${error}`
+      });
+    }
+  }
+  return results;
+}
+
+// server/routes.ts
+import { faker } from "@faker-js/faker";
+import Stripe from "stripe";
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("Missing required Stripe secret: STRIPE_SECRET_KEY");
+}
+var stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-06-20"
+});
+function generateTestResponse(message) {
+  const responses = [
+    "Thanks for the info!",
+    "Got it, I'll get back to you soon.",
+    "Thanks for letting me know.",
+    "I'll check my calendar and let you know.",
+    "That works for me!",
+    "Can we reschedule?",
+    "Perfect, thanks!",
+    "Sorry, I can't make it then.",
+    "Yes, that sounds good.",
+    "No, that doesn't work for me.",
+    "I'll be there!",
+    "Need more details please.",
+    "\u{1F44D}",
+    "\u{1F44C}",
+    "OK",
+    "Sounds good!"
+  ];
+  return responses[Math.floor(Math.random() * responses.length)];
+}
+var SessionStore = MemoryStore(session);
+var authenticateUser = (req, res, next) => {
+  if (req.session.userId) {
+    next();
+  } else {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+};
+async function registerRoutes(app2) {
+  app2.use(
+    session({
+      cookie: {
+        maxAge: 864e5,
+        // 24 hours
+        secure: process.env.NODE_ENV === "production"
+      },
+      store: new SessionStore({
+        checkPeriod: 864e5
+        // prune expired entries every 24h
+      }),
+      resave: false,
+      saveUninitialized: false,
+      secret: process.env.SESSION_SECRET || "textblaster-secret"
+    })
+  );
+  app2.post("/api/auth/register", async (req, res) => {
+    try {
+      const validData = userRegisterSchema.parse(req.body);
+      const existingUser = await storage.getUserByUsername(validData.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(validData.password, salt);
+      const user = await storage.createUser({
+        ...validData,
+        password: hashedPassword
+      });
+      req.session.userId = user.id;
+      const { password, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/auth/login", async (req, res) => {
+    try {
+      const validData = userLoginSchema.parse(req.body);
+      const user = await storage.getUserByUsername(validData.username);
+      if (!user) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+      const isMatch = await bcrypt.compare(validData.password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+      req.session.userId = user.id;
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/auth/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+  app2.get("/api/auth/me", authenticateUser, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/clients", authenticateUser, async (req, res) => {
+    try {
+      const clients2 = await storage.getClientsByUserId(req.session.userId);
+      res.json(clients2);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/clients", authenticateUser, async (req, res) => {
+    try {
+      const validData = insertClientSchema.parse({
+        ...req.body,
+        userId: req.session.userId
+      });
+      const client2 = await storage.createClient(validData);
+      res.status(201).json(client2);
+    } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/clients/generate-random", authenticateUser, async (req, res) => {
+    try {
+      const { count = 5 } = req.body;
+      const clients2 = [];
+      for (let i = 0; i < count; i++) {
+        const firstName = faker.person.firstName();
+        const lastName = faker.person.lastName();
+        const phone = `+1${faker.string.numeric(10)}`;
+        const tagCount = faker.number.int({ min: 0, max: 3 });
+        const tags = [];
+        const allTags = ["VIP", "Lead", "Customer", "Prospect", "Inactive", "New", "Returning"];
+        for (let j = 0; j < tagCount; j++) {
+          const randomTag = allTags[faker.number.int({ min: 0, max: allTags.length - 1 })];
+          if (!tags.includes(randomTag)) {
+            tags.push(randomTag);
+          }
+        }
+        clients2.push({
+          userId: req.session.userId,
+          firstName,
+          lastName,
+          phone,
+          email: faker.helpers.maybe(() => faker.internet.email({ firstName, lastName }), { probability: 0.7 }),
+          tags: tags.length > 0 ? tags : null,
+          notes: faker.helpers.maybe(() => faker.lorem.paragraph(), { probability: 0.5 })
+        });
+      }
+      const createdClients = await Promise.all(
+        clients2.map((client2) => storage.createClient(client2))
+      );
+      res.status(201).json({
+        message: `Generated ${createdClients.length} random clients`,
+        clients: createdClients
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/clients/:id", authenticateUser, async (req, res) => {
+    try {
+      const client2 = await storage.getClient(parseInt(req.params.id));
+      if (!client2) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      if (client2.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      res.json(client2);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.put("/api/clients/:id", authenticateUser, async (req, res) => {
+    try {
+      const client2 = await storage.getClient(parseInt(req.params.id));
+      if (!client2) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      if (client2.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      const updatedClient = await storage.updateClient(
+        parseInt(req.params.id),
+        req.body
+      );
+      res.json(updatedClient);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.delete("/api/clients/:id", authenticateUser, async (req, res) => {
+    try {
+      const client2 = await storage.getClient(parseInt(req.params.id));
+      if (!client2) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      if (client2.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      await storage.deleteClient(parseInt(req.params.id));
+      res.json({ message: "Client deleted successfully" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/clients/:clientId/messages", authenticateUser, async (req, res) => {
+    try {
+      const client2 = await storage.getClient(parseInt(req.params.clientId));
+      if (!client2) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      if (client2.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      const messages2 = await storage.getMessagesByClientId(parseInt(req.params.clientId));
+      res.json(messages2);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/messages", authenticateUser, async (req, res) => {
+    try {
+      const validData = insertMessageSchema.parse({
+        ...req.body,
+        userId: req.session.userId
+      });
+      const client2 = await storage.getClient(validData.clientId);
+      if (!client2 || client2.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized or client not found" });
+      }
+      if (validData.direction === "outbound") {
+        const userCredits = await storage.getUserCredits(req.session.userId);
+        if (userCredits < 1) {
+          return res.status(400).json({ message: "Insufficient credits" });
+        }
+        await storage.useCredits(req.session.userId, 1, "Sent SMS message");
+      }
+      const message = await storage.createMessage(validData);
+      if (validData.direction === "outbound") {
+        await storage.updateClient(validData.clientId, {
+          lastContactedAt: /* @__PURE__ */ new Date()
+        });
+      }
+      res.status(201).json(message);
+    } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/messages/test", authenticateUser, async (req, res) => {
+    try {
+      const validData = insertMessageSchema.parse({
+        ...req.body,
+        userId: req.session.userId,
+        status: "delivered"
+        // Simulate successful delivery
+      });
+      const client2 = await storage.getClient(validData.clientId);
+      if (!client2 || client2.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized or client not found" });
+      }
+      const twilioSid = `TEST${faker.string.alphanumeric(32)}`;
+      const message = await storage.createMessage({
+        ...validData,
+        direction: "outbound"
+      });
+      await storage.updateMessageStatus(message.id, "delivered");
+      await storage.updateClient(validData.clientId, {
+        lastContactedAt: /* @__PURE__ */ new Date()
+      });
+      if (Math.random() > 0.3) {
+        setTimeout(async () => {
+          try {
+            const responseMessage = await storage.createMessage({
+              userId: req.session.userId,
+              clientId: validData.clientId,
+              content: generateTestResponse(validData.content),
+              direction: "inbound",
+              status: "received"
+            });
+            await storage.updateMessageStatus(responseMessage.id, "received");
+          } catch (err) {
+            console.error("Error creating test response:", err);
+          }
+        }, faker.number.int({ min: 1e3, max: 3e3 }));
+      }
+      res.status(201).json({
+        ...message,
+        test: true,
+        message: "Test message created successfully"
+      });
+    } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/message-templates", authenticateUser, async (req, res) => {
+    try {
+      const templates = await storage.getMessageTemplates(req.session.userId);
+      res.json(templates);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/message-templates", authenticateUser, async (req, res) => {
+    try {
+      const template = await storage.createMessageTemplate({
+        ...req.body,
+        userId: req.session.userId
+      });
+      res.status(201).json(template);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/mass-messages", authenticateUser, async (req, res) => {
+    try {
+      const { clientIds, content } = req.body;
+      if (!Array.isArray(clientIds) || clientIds.length === 0 || !content) {
+        return res.status(400).json({ message: "Invalid request data" });
+      }
+      const userCredits = await storage.getUserCredits(req.session.userId);
+      if (userCredits < clientIds.length) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+      const messagePromises = clientIds.map(async (clientId) => {
+        const client2 = await storage.getClient(clientId);
+        if (!client2 || client2.userId !== req.session.userId) {
+          return null;
+        }
+        return storage.createMessage({
+          userId: req.session.userId,
+          clientId,
+          content,
+          direction: "outbound",
+          status: "sent"
+        });
+      });
+      const messages2 = await Promise.all(messagePromises);
+      const validMessages = messages2.filter(Boolean);
+      await storage.useCredits(
+        req.session.userId,
+        validMessages.length,
+        `Sent mass message to ${validMessages.length} clients`
+      );
+      await Promise.all(
+        validMessages.map(
+          (message) => message && storage.updateClient(message.clientId, {
+            lastContactedAt: /* @__PURE__ */ new Date()
+          })
+        )
+      );
+      res.status(201).json({
+        sent: validMessages.length,
+        messages: validMessages
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/credits", authenticateUser, async (req, res) => {
+    try {
+      const credits = await storage.getUserCredits(req.session.userId);
+      res.json({ credits });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/credit-transactions", authenticateUser, async (req, res) => {
+    try {
+      const transactions = await storage.getCreditTransactions(req.session.userId);
+      res.json(transactions);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.post("/api/credits/add", authenticateUser, async (req, res) => {
+    try {
+      const { amount } = req.body;
+      if (!amount || typeof amount !== "number" || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+      const transaction = await storage.addCredits(
+        req.session.userId,
+        amount,
+        "purchase",
+        "Development credit purchase"
+      );
+      res.status(201).json(transaction);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/analytics/dashboard", authenticateUser, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const clients2 = await storage.getClientsByUserId(req.session.userId);
+      let messagesCount = 0;
+      let responseCount = 0;
+      for (const client2 of clients2) {
+        const messages2 = await storage.getMessagesByClientId(client2.id);
+        const outboundMessages = messages2.filter((m) => m.direction === "outbound");
+        messagesCount += outboundMessages.length;
+        for (let i = 1; i < messages2.length; i++) {
+          if (messages2[i].direction === "inbound" && messages2[i - 1].direction === "outbound") {
+            responseCount++;
+          }
+        }
+      }
+      const responseRate = messagesCount > 0 ? Math.round(responseCount / messagesCount * 100) : 0;
+      const thirtyDaysAgo = /* @__PURE__ */ new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const clientsNeedingAttention = clients2.filter(
+        (client2) => !client2.lastContactedAt || new Date(client2.lastContactedAt) < thirtyDaysAgo
+      ).sort((a, b) => {
+        const aDate = a.lastContactedAt ? new Date(a.lastContactedAt) : /* @__PURE__ */ new Date(0);
+        const bDate = b.lastContactedAt ? new Date(b.lastContactedAt) : /* @__PURE__ */ new Date(0);
+        return aDate.getTime() - bDate.getTime();
+      }).slice(0, 10);
+      res.json({
+        stats: {
+          clientCount: clients2.length,
+          messageSent: messagesCount,
+          responseRate: `${responseRate}%`,
+          credits: user.credits
+        },
+        clientsNeedingAttention
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  app2.get("/api/recent-conversations", authenticateUser, async (req, res) => {
+    try {
+      const clients2 = await storage.getClientsByUserId(req.session.userId);
+      const recentMessages = [];
+      for (const client2 of clients2) {
+        const messages2 = await storage.getMessagesByClientId(client2.id);
+        if (messages2.length > 0) {
+          messages2.sort(
+            (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()
+          );
+          recentMessages.push({
+            message: messages2[0],
+            client: client2
+          });
+        }
+      }
+      recentMessages.sort(
+        (a, b) => new Date(b.message.sentAt).getTime() - new Date(a.message.sentAt).getTime()
+      );
+      res.json(recentMessages.slice(0, 10));
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  try {
+    initTwilioClient();
+  } catch (error) {
+    console.warn("Failed to initialize Twilio client:", error);
+    console.warn("SMS sending functionality will be unavailable.");
+  }
+  app2.post("/api/twilio/status-callback", handleMessageStatusUpdate);
+  app2.post("/api/twilio/incoming", handleIncomingMessage);
+  app2.get("/api/message-batches/:batchId/status", authenticateUser, getMessageBatchStatus);
+  app2.post("/api/create-payment-intent", async (req, res) => {
+    try {
+      const { planId, amount } = req.body;
+      const planConfig = {
+        "price_starter_800": { credits: 800, name: "Starter" },
+        "price_professional_1750": { credits: 1750, name: "Professional" },
+        "price_business_4000": { credits: 4e3, name: "Business" }
+      };
+      const plan = planConfig[planId];
+      if (!plan) {
+        return res.status(400).json({ message: "Invalid plan ID" });
+      }
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        // Convert to cents
+        currency: "usd",
+        metadata: {
+          planId,
+          credits: plan.credits.toString(),
+          planName: plan.name
+        }
+      });
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+    }
+  });
+  app2.post("/api/payment-success", async (req, res) => {
+    try {
+      const { paymentIntentId, userData } = req.body;
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (paymentIntent.status !== "succeeded") {
+        return res.status(400).json({ message: "Payment not successful" });
+      }
+      const planCredits = parseInt(paymentIntent.metadata.credits);
+      const planName = paymentIntent.metadata.planName;
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const newUser = await storage.createUser({
+        username: userData.username,
+        password: hashedPassword,
+        email: userData.email,
+        fullName: userData.fullName,
+        credits: planCredits,
+        subscriptionTier: planName.toLowerCase()
+      });
+      await storage.addCredits(
+        newUser.id,
+        planCredits,
+        "purchase",
+        `${planName} plan purchase`,
+        paymentIntentId
+      );
+      req.session.userId = newUser.id;
+      req.session.username = newUser.username;
+      res.json({
+        message: "Account created successfully",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          fullName: newUser.fullName,
+          credits: newUser.credits,
+          subscriptionTier: newUser.subscriptionTier
+        }
+      });
+    } catch (error) {
+      console.error("Error processing payment success:", error);
+      res.status(500).json({ message: "Error creating account: " + error.message });
+    }
+  });
+  app2.post("/api/send-sms", authenticateUser, async (req, res) => {
+    try {
+      const { clientId, content } = req.body;
+      if (!clientId || !content) {
+        return res.status(400).json({ message: "Client ID and message content are required" });
+      }
+      const client2 = await storage.getClient(clientId);
+      if (!client2 || client2.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized or client not found" });
+      }
+      const userCredits = await storage.getUserCredits(req.session.userId);
+      if (userCredits < 1) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+      const message = await storage.createMessage({
+        userId: req.session.userId,
+        clientId,
+        content,
+        direction: "outbound",
+        status: "queued"
+      });
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5e3}`;
+      const statusCallback = `${baseUrl}/api/twilio/status-callback`;
+      const twilioResponse = await sendSms(
+        client2.phone,
+        content,
+        statusCallback
+      );
+      if (!twilioResponse) {
+        await storage.updateMessageStatus(message.id, "failed");
+        return res.status(500).json({ message: "Failed to send SMS" });
+      }
+      const updatedMessage = await storage.updateMessageStatus(message.id, "sent");
+      await storage.getMessageByTwilioSid(twilioResponse.sid);
+      await storage.useCredits(req.session.userId, 1, "Sent SMS message");
+      await storage.updateClient(clientId, {
+        lastContactedAt: /* @__PURE__ */ new Date()
+      });
+      res.status(200).json({
+        success: true,
+        message: updatedMessage
+      });
+    } catch (error) {
+      console.error("Error sending SMS:", error);
+      res.status(500).json({ message: "Failed to send SMS" });
+    }
+  });
+  app2.post("/api/send-mass-sms", authenticateUser, async (req, res) => {
+    try {
+      const { clientIds, content } = req.body;
+      if (!Array.isArray(clientIds) || clientIds.length === 0 || !content) {
+        return res.status(400).json({ message: "Invalid request data" });
+      }
+      const userCredits = await storage.getUserCredits(req.session.userId);
+      if (userCredits < clientIds.length) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5e3}`;
+      const statusCallback = `${baseUrl}/api/twilio/status-callback`;
+      const messageData = [];
+      const validClients = [];
+      for (const clientId of clientIds) {
+        const client2 = await storage.getClient(clientId);
+        if (!client2 || client2.userId !== req.session.userId) {
+          continue;
+        }
+        messageData.push({
+          userId: req.session.userId,
+          clientId,
+          content,
+          direction: "outbound",
+          status: "queued"
+        });
+        validClients.push(client2);
+      }
+      const { batchId, messages: messages2 } = await storage.createMessageBatch(
+        req.session.userId,
+        messageData
+      );
+      await storage.useCredits(
+        req.session.userId,
+        messages2.length,
+        `Sent mass message to ${messages2.length} clients`
+      );
+      for (const client2 of validClients) {
+        await storage.updateClient(client2.id, {
+          lastContactedAt: /* @__PURE__ */ new Date()
+        });
+      }
+      sendBatchSms(
+        validClients.map((client2, index) => ({
+          to: client2.phone,
+          body: content,
+          messageId: messages2[index].id
+        })),
+        statusCallback
+      ).catch((error) => {
+        console.error("Error sending batch SMS:", error);
+      });
+      res.status(200).json({
+        success: true,
+        batchId,
+        totalMessages: messages2.length
+      });
+    } catch (error) {
+      console.error("Error sending mass SMS:", error);
+      res.status(500).json({ message: "Failed to send mass SMS" });
+    }
+  });
+  const httpServer = createServer(app2);
+  return httpServer;
+}
+
+// server/initDatabase.ts
+async function initializeDatabase() {
+  if (!process.env.DATABASE_URL) {
+    console.log("[database] No DATABASE_URL found, using in-memory storage");
+    return false;
+  }
+  try {
+    console.log("[database] Connecting to Supabase...");
+    const db = await createSupabaseConnection();
+    await createTables(db);
+    console.log("[database] Supabase database initialized successfully");
+    return true;
+  } catch (error) {
+    console.error("[database] Failed to connect to Supabase:", error);
+    return false;
+  }
+}
+
+// server/index.ts
+var app = express2();
+app.use(express2.json());
+app.use(express2.urlencoded({ extended: false }));
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path3 = req.path;
+  let capturedJsonResponse = void 0;
+  const originalResJson = res.json;
+  res.json = function(bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path3.startsWith("/api")) {
+      let logLine = `${req.method} ${path3} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "\u2026";
+      }
+      log(logLine);
+    }
+  });
+  next();
+});
+(async () => {
+  await initializeDatabase();
+  const server = await registerRoutes(app);
+  app.use((err, _req, res, _next) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+    res.status(status).json({ message });
+    throw err;
+  });
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+  const port = 5e3;
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true
+  }, () => {
+    log(`serving on port ${port}`);
+  });
+})();

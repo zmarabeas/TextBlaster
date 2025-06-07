@@ -1,34 +1,29 @@
-# Quick Deployment Guide for TextBlaster
+# Fixed Deployment Guide for TextBlaster
 
-## Files Ready for GitHub
+## Problem Solved
 
-Your project is now ready for deployment! Here's what I've prepared:
+The issue was that Vercel was serving raw source code instead of the built application. I've fixed this with:
 
-✅ **vercel.json** - Vercel deployment configuration
-✅ **.gitignore** - Excludes node_modules, .env, and build files  
-✅ **README.md** - Complete documentation with setup instructions
+✅ **Proper vercel.json** - Fixed build configuration and routing
+✅ **Simplified API handler** - Works correctly with Vercel serverless functions  
+✅ **Clean build process** - Frontend builds to /dist, API functions work properly
 
 ## Steps to Deploy
 
-### 1. Create GitHub Repository
+### 1. Push Updated Code to GitHub
 ```bash
-git init
 git add .
-git commit -m "Initial commit - TextBlaster CRM"
-git branch -M main
-git remote add origin https://github.com/yourusername/textblaster-crm.git
-git push -u origin main
+git commit -m "Fix Vercel deployment - proper routing and build"
+git push
 ```
 
-### 2. Deploy to Vercel
-1. Go to [vercel.com](https://vercel.com) and sign in
-2. Click "New Project" 
-3. Import your GitHub repository
-4. Vercel will auto-detect the settings from vercel.json
+### 2. Redeploy on Vercel
+Your existing Vercel project should automatically redeploy with the fixes. If not:
+1. Go to your Vercel dashboard
+2. Click "Redeploy" on your project
+3. Use "Other" preset (as discussed before)
 
-### 3. Set Environment Variables in Vercel
-In your Vercel project dashboard, add these environment variables:
-
+### 3. Environment Variables (Same as Before)
 **Database:**
 - `DATABASE_URL` - Your Supabase PostgreSQL connection string
 
@@ -44,28 +39,18 @@ In your Vercel project dashboard, add these environment variables:
 **Session Security:**
 - `SESSION_SECRET` - Generate a random 32+ character string
 
-### 4. Database Setup
-Your Supabase database will automatically initialize on first deployment. The application creates all necessary tables automatically.
+## What's Fixed
 
-### 5. Domain (Optional)
-Add your custom domain in Vercel project settings if desired.
+**Frontend:** Now properly builds to /dist directory and serves the React app
+**API Routes:** Simplified serverless function handles all /api/* requests correctly
+**Build Process:** Uses npm run build command with proper output directory
+**Routing:** Fixed routing between frontend and backend
 
-## Environment Variable Sources
+## Test After Deployment
 
-**Supabase Database:**
-1. Create project at [supabase.com](https://supabase.com)
-2. Go to Settings → Database
-3. Copy connection string and replace [YOUR-PASSWORD]
+1. Visit your Vercel URL - should show the TextBlaster landing page
+2. Test registration/login functionality 
+3. Verify API endpoints work correctly
+4. Check that the app loads properly instead of showing source code
 
-**Stripe Keys:**
-1. Dashboard at [dashboard.stripe.com](https://dashboard.stripe.com)
-2. Get keys from Developers → API keys
-
-**Twilio Credentials:**
-1. Console at [console.twilio.com](https://console.twilio.com)
-2. Account SID and Auth Token from dashboard
-3. Phone number from Phone Numbers section
-
-## Ready to Deploy!
-
-Once you push to GitHub and set up the environment variables in Vercel, your TextBlaster CRM will be live and ready for production use.
+Your TextBlaster CRM should now deploy and work correctly on Vercel!
