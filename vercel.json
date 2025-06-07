@@ -2,6 +2,14 @@
   "buildCommand": "npx vite build --config vite.config.ts",
   "outputDirectory": "dist/public",
   "installCommand": "npm install",
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }

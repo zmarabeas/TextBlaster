@@ -1,4 +1,4 @@
-// Simple in-memory session store for serverless
+// Simple session store for serverless
 const sessions = new Map();
 
 // Helper functions
@@ -14,7 +14,6 @@ function createSession(userId, username) {
   return sessionId;
 }
 
-// Simple password hash for serverless
 function simpleHash(password) {
   return Buffer.from(password + 'textblaster_salt').toString('base64');
 }
@@ -23,72 +22,59 @@ function compareHash(password, hash) {
   return Buffer.from(password + 'textblaster_salt').toString('base64') === hash;
 }
 
-// Supabase API helper using REST API
-async function supabaseQuery(query, params = []) {
+// Supabase REST API helper
+async function supabaseRequest(endpoint, options = {}) {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL not configured');
   }
   
-  // Extract connection details from DATABASE_URL
-  const url = new URL(process.env.DATABASE_URL);
-  const supabaseUrl = `https://${url.hostname.split('.')[0]}.supabase.co`;
-  const supabaseKey = url.searchParams.get('apikey') || process.env.SUPABASE_ANON_KEY;
+  // Parse Supabase connection details from DATABASE_URL
+  const dbUrl = new URL(process.env.DATABASE_URL);
+  const projectRef = dbUrl.hostname.split('.')[0];
+  const supabaseUrl = `https://${projectRef}.supabase.co`;
   
-  if (!supabaseKey) {
-    // For direct PostgreSQL connection, we'll use a simple HTTP request
-    return await directDatabaseQuery(query, params);
+  // Try to extract API key from URL or use environment variable
+  let apiKey = dbUrl.searchParams.get('apikey') || process.env.SUPABASE_ANON_KEY;
+  
+  // If no API key found, try common Supabase patterns
+  if (!apiKey) {
+    // Extract from password field (common in some Supabase connection strings)
+    const password = dbUrl.password;
+    if (password && password.startsWith('eyJ')) {
+      apiKey = password;
+    }
   }
   
-  // Use Supabase REST API
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/execute_sql`, {
-    method: 'POST',
+  if (!apiKey) {
+    throw new Error('Supabase API key not found in DATABASE_URL or SUPABASE_ANON_KEY');
+  }
+  
+  const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabaseKey}`,
-      'apikey': supabaseKey
-    },
-    body: JSON.stringify({ query, params })
+      'Authorization': `Bearer ${apiKey}`,
+      'apikey': apiKey,
+      ...options.headers
+    }
   });
   
   if (!response.ok) {
-    throw new Error(`Database query failed: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error(`Supabase request failed: ${response.status} ${response.statusText}`, errorText);
+    throw new Error(`Database request failed: ${response.statusText}`);
   }
   
   return await response.json();
 }
 
-// Fallback to direct database operations using fetch
-async function directDatabaseQuery(query, params) {
-  // For demo purposes, return mock data structure
-  // In production, you'd implement proper database connection
-  return { rows: [] };
-}
-
 // Database operations using Supabase REST API
 async function getUserByUsername(username) {
   try {
-    // Use Supabase REST API endpoint
-    const url = new URL(process.env.DATABASE_URL);
-    const supabaseUrl = `https://${url.hostname.split('.')[0]}.supabase.co`;
-    const supabaseKey = url.searchParams.get('apikey') || process.env.SUPABASE_ANON_KEY;
-    
-    if (supabaseKey) {
-      const response = await fetch(`${supabaseUrl}/rest/v1/users?username=eq.${username}&select=*`, {
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey
-        }
-      });
-      
-      if (response.ok) {
-        const users = await response.json();
-        return users[0] || null;
-      }
-    }
-    
-    return null;
+    const users = await supabaseRequest(`users?username=eq.${encodeURIComponent(username)}&select=*`);
+    return users[0] || null;
   } catch (error) {
-    console.error('Database error:', error);
+    console.error('Error fetching user by username:', error);
     return null;
   }
 }
@@ -97,96 +83,48 @@ async function createUser(userData) {
   try {
     const { username, password, email, fullName } = userData;
     
-    const url = new URL(process.env.DATABASE_URL);
-    const supabaseUrl = `https://${url.hostname.split('.')[0]}.supabase.co`;
-    const supabaseKey = url.searchParams.get('apikey') || process.env.SUPABASE_ANON_KEY;
+    const users = await supabaseRequest('users', {
+      method: 'POST',
+      headers: {
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        username,
+        password,
+        email,
+        full_name: fullName,
+        credits: 25,
+        subscription_tier: 'free'
+      })
+    });
     
-    if (supabaseKey) {
-      const response = await fetch(`${supabaseUrl}/rest/v1/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey,
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          username,
-          password,
-          email,
-          full_name: fullName,
-          credits: 25,
-          subscription_tier: 'free'
-        })
-      });
-      
-      if (response.ok) {
-        const users = await response.json();
-        return users[0] || null;
-      }
-    }
-    
-    return null;
+    return users[0] || null;
   } catch (error) {
-    console.error('Database error:', error);
+    console.error('Error creating user:', error);
     return null;
   }
 }
 
 async function getUser(id) {
   try {
-    const url = new URL(process.env.DATABASE_URL);
-    const supabaseUrl = `https://${url.hostname.split('.')[0]}.supabase.co`;
-    const supabaseKey = url.searchParams.get('apikey') || process.env.SUPABASE_ANON_KEY;
-    
-    if (supabaseKey) {
-      const response = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${id}&select=*`, {
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey
-        }
-      });
-      
-      if (response.ok) {
-        const users = await response.json();
-        return users[0] || null;
-      }
-    }
-    
-    return null;
+    const users = await supabaseRequest(`users?id=eq.${id}&select=*`);
+    return users[0] || null;
   } catch (error) {
-    console.error('Database error:', error);
+    console.error('Error fetching user by id:', error);
     return null;
   }
 }
 
 async function getUserCredits(userId) {
   try {
-    const url = new URL(process.env.DATABASE_URL);
-    const supabaseUrl = `https://${url.hostname.split('.')[0]}.supabase.co`;
-    const supabaseKey = url.searchParams.get('apikey') || process.env.SUPABASE_ANON_KEY;
-    
-    if (supabaseKey) {
-      const response = await fetch(`${supabaseUrl}/rest/v1/credit_transactions?user_id=eq.${userId}&select=amount,type`, {
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey
-        }
-      });
-      
-      if (response.ok) {
-        const transactions = await response.json();
-        const total = transactions.reduce((sum, t) => {
-          return sum + (t.type === 'purchase' ? t.amount : -t.amount);
-        }, 0);
-        return Math.max(0, total);
-      }
-    }
-    
-    return 25; // Default credits
+    const transactions = await supabaseRequest(`credit_transactions?user_id=eq.${userId}&select=amount,type`);
+    const total = transactions.reduce((sum, t) => {
+      return sum + (t.type === 'purchase' ? t.amount : -t.amount);
+    }, 0);
+    return Math.max(0, total);
   } catch (error) {
-    console.error('Database error:', error);
-    return 25;
+    console.error('Error fetching user credits:', error);
+    return 25; // Default credits
   }
 }
 
@@ -334,17 +272,18 @@ module.exports = async (req, res) => {
   try {
     // Route handling
     if (path === '/health' && method === 'GET') {
+      const hasDbUrl = !!process.env.DATABASE_URL;
       return res.json({ 
         status: 'healthy',
-        message: 'TextBlaster API with Supabase REST', 
+        message: 'TextBlaster API with Supabase', 
         timestamp: new Date().toISOString(),
-        database: 'connected'
+        database: hasDbUrl ? 'connected' : 'not configured'
       });
     }
 
     if (path === '/test' && method === 'GET') {
       return res.json({ 
-        message: 'TextBlaster API working with Supabase REST', 
+        message: 'TextBlaster API working with Supabase', 
         timestamp: new Date().toISOString()
       });
     }
