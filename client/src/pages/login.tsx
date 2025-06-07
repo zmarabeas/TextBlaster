@@ -35,14 +35,16 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-background py-12 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8 flex items-center">
-        <img 
-          src={logoPath} 
-          alt="TextBlaster Logo" 
-          className="h-12 w-12 mr-3"
-        />
-        <h1 className="font-display font-bold text-3xl text-foreground">TextBlaster</h1>
-      </div>
+      <Link href="/">
+        <div className="mb-8 flex items-center cursor-pointer group">
+          <img 
+            src={logoPath} 
+            alt="TextBlaster Logo" 
+            className="h-8 w-8 mr-3 logo-spin group-hover:animate-spin"
+          />
+          <h1 className="text-2xl font-bold text-foreground">TextBlaster</h1>
+        </div>
+      </Link>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="font-display text-2xl">Sign In</CardTitle>

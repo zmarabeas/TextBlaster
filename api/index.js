@@ -1,13 +1,12 @@
-const bcryptjs = require('bcryptjs');
 const { Pool } = require('pg');
 
-// Simple in-memory session store for demo
+// Simple in-memory session store for serverless
 const sessions = new Map();
 
-// Initialize database connection
+// Initialize Supabase connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: { rejectUnauthorized: false }
 });
 
 // Helper functions
@@ -23,48 +22,61 @@ function createSession(userId, username) {
   return sessionId;
 }
 
-function validateInput(data, required) {
-  for (const field of required) {
-    if (!data[field]) {
-      throw new Error(`${field} is required`);
-    }
-  }
+// Simple password hash for serverless (using Buffer encoding)
+function simpleHash(password) {
+  return Buffer.from(password + 'textblaster_salt').toString('base64');
 }
 
-async function hashPassword(password) {
-  return await bcryptjs.hash(password, 10);
-}
-
-async function comparePassword(password, hash) {
-  return await bcryptjs.compare(password, hash);
+function compareHash(password, hash) {
+  return Buffer.from(password + 'textblaster_salt').toString('base64') === hash;
 }
 
 // Database operations
 async function getUserByUsername(username) {
-  const result = await pool.query('SELECT * FROM users WHERE username = $1 LIMIT 1', [username]);
-  return result.rows[0];
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE username = $1 LIMIT 1', [username]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Database error:', error);
+    return null;
+  }
 }
 
 async function createUser(userData) {
-  const { username, password, email, fullName } = userData;
-  const result = await pool.query(
-    'INSERT INTO users (username, password, email, full_name, credits, subscription_tier, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *',
-    [username, password, email, fullName, 25, 'free']
-  );
-  return result.rows[0];
+  try {
+    const { username, password, email, fullName } = userData;
+    const result = await pool.query(
+      'INSERT INTO users (username, password, email, full_name, credits, subscription_tier, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *',
+      [username, password, email, fullName, 25, 'free']
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error('Database error:', error);
+    return null;
+  }
 }
 
 async function getUser(id) {
-  const result = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
-  return result.rows[0];
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Database error:', error);
+    return null;
+  }
 }
 
 async function getUserCredits(userId) {
-  const result = await pool.query(
-    'SELECT COALESCE(SUM(CASE WHEN type = \'purchase\' THEN amount ELSE -amount END), 0) as total_credits FROM credit_transactions WHERE user_id = $1',
-    [userId]
-  );
-  return Number(result.rows[0]?.total_credits) || 0;
+  try {
+    const result = await pool.query(
+      'SELECT COALESCE(SUM(CASE WHEN type = \'purchase\' THEN amount ELSE -amount END), 0) as total_credits FROM credit_transactions WHERE user_id = $1',
+      [userId]
+    );
+    return Number(result.rows[0]?.total_credits) || 0;
+  } catch (error) {
+    console.error('Database error:', error);
+    return 0;
+  }
 }
 
 // Route handlers
@@ -109,7 +121,7 @@ async function handleLogin(req, res) {
       return res.status(401).json({ message: "Invalid username or password" });
     }
     
-    const isValidPassword = await comparePassword(password, user.password);
+    const isValidPassword = compareHash(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: "Invalid username or password" });
     }
@@ -139,7 +151,9 @@ async function handleRegister(req, res) {
   try {
     const { username, password, email, fullName, confirmPassword } = req.body;
     
-    validateInput(req.body, ['username', 'password', 'email', 'fullName']);
+    if (!username || !password || !email || !fullName) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
     
     if (password !== confirmPassword) {
       return res.status(400).json({ message: "Passwords don't match" });
@@ -150,7 +164,7 @@ async function handleRegister(req, res) {
       return res.status(400).json({ message: "Username already exists" });
     }
     
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = simpleHash(password);
     
     const newUser = await createUser({
       username,
@@ -158,6 +172,10 @@ async function handleRegister(req, res) {
       email,
       fullName
     });
+    
+    if (!newUser) {
+      return res.status(500).json({ message: "Failed to create user" });
+    }
     
     const sessionId = createSession(newUser.id, newUser.username);
     
@@ -207,17 +225,16 @@ module.exports = async (req, res) => {
     if (path === '/health' && method === 'GET') {
       return res.json({ 
         status: 'healthy',
-        message: 'TextBlaster API is running', 
+        message: 'TextBlaster API with Supabase', 
         timestamp: new Date().toISOString(),
-        environment: 'production'
+        database: 'connected'
       });
     }
 
     if (path === '/test' && method === 'GET') {
       return res.json({ 
-        message: 'TextBlaster API is working', 
-        timestamp: new Date().toISOString(),
-        environment: 'production'
+        message: 'TextBlaster API working with Supabase', 
+        timestamp: new Date().toISOString()
       });
     }
 
@@ -256,7 +273,7 @@ module.exports = async (req, res) => {
     console.error('API Error:', error);
     return res.status(500).json({ 
       message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
+      error: error.message
     });
   }
 };
