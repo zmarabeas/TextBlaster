@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, clearSessionId } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
@@ -81,6 +81,7 @@ export function AuthProvider({ children }) {
       await apiRequest('POST', '/api/auth/logout');
     },
     onSuccess: () => {
+      clearSessionId(); // Clear session from storage
       queryClient.setQueryData(['/api/auth/me'], null);
       queryClient.clear();
       setLocation('/login');
@@ -90,10 +91,14 @@ export function AuthProvider({ children }) {
       });
     },
     onError: () => {
+      // Clear session even if logout request fails
+      clearSessionId();
+      queryClient.setQueryData(['/api/auth/me'], null);
+      queryClient.clear();
+      setLocation('/login');
       toast({
-        title: 'Logout failed',
-        description: 'Could not log out. Please try again.',
-        variant: 'destructive',
+        title: 'Logged out',
+        description: 'You have been logged out.',
       });
     }
   });

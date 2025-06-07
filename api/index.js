@@ -106,17 +106,35 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 
-// Session configuration for Vercel
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'textblaster-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+// Simple session store for serverless (in production, use Redis or similar)
+const sessions = new Map();
+
+// Custom session middleware for serverless
+const sessionMiddleware = (req, res, next) => {
+  const sessionId = req.headers.authorization?.replace('Bearer ', '') || 
+                    req.cookies?.sessionId || 
+                    req.headers['x-session-id'];
+  
+  if (sessionId && sessions.has(sessionId)) {
+    req.session = sessions.get(sessionId);
+  } else {
+    req.session = {};
   }
-}));
+  
+  // Save session function
+  req.session.save = (callback) => {
+    if (!req.session.id) {
+      req.session.id = Math.random().toString(36).substr(2, 9);
+    }
+    sessions.set(req.session.id, req.session);
+    res.setHeader('x-session-id', req.session.id);
+    if (callback) callback();
+  };
+  
+  next();
+};
+
+app.use(sessionMiddleware);
 
 // Authentication middleware
 const authenticateUser = (req, res, next) => {
@@ -248,6 +266,7 @@ app.post('/auth/login', async (req, res) => {
     
     req.session.userId = user.id;
     req.session.username = user.username;
+    req.session.save();
     
     const credits = await storage.getUserCredits(user.id);
     
@@ -290,6 +309,7 @@ app.post('/auth/register', async (req, res) => {
     
     req.session.userId = newUser.id;
     req.session.username = newUser.username;
+    req.session.save();
     
     res.json({
       message: "Registration successful",
@@ -309,12 +329,10 @@ app.post('/auth/register', async (req, res) => {
 });
 
 app.post('/auth/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: "Logout failed" });
-    }
-    res.json({ message: "Logout successful" });
-  });
+  if (req.session.id) {
+    sessions.delete(req.session.id);
+  }
+  res.json({ message: "Logout successful" });
 });
 
 // Client routes
@@ -480,5 +498,18 @@ app.get('/test', (req, res) => {
   });
 });
 
-// Export the app for Vercel
-module.exports = app;
+// Export handler for Vercel
+module.exports = (req, res) => {
+  // Set CORS headers for all requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-session-id');
+  res.setHeader('Access-Control-Expose-Headers', 'x-session-id');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  // Pass request to Express app
+  app(req, res);
+};
