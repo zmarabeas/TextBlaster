@@ -1,0 +1,108 @@
+import { useState } from 'react';
+import { Link } from 'wouter';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { userLoginSchema } from '@shared/schema';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from '@/hooks/useAuth';
+import logoPath from "@assets/TEXT_BLAST_LOGO.png";
+
+export default function Login() {
+  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const form = useForm({
+    resolver: zodResolver(userLoginSchema),
+    defaultValues: {
+      username: '',
+      password: '',
+    },
+  });
+
+  const onSubmit = async (data) => {
+    setIsLoading(true);
+    try {
+      await login(data);
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col justify-center items-center bg-background py-12 px-4 sm:px-6 lg:px-8">
+      <div className="mb-8 flex items-center">
+        <img 
+          src={logoPath} 
+          alt="TextBlaster Logo" 
+          className="h-12 w-12 mr-3"
+        />
+        <h1 className="font-display font-bold text-3xl text-foreground">TextBlaster</h1>
+      </div>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="font-display text-2xl">Sign In</CardTitle>
+          <CardDescription>
+            Enter your username and password to access your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your username" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <div className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : null}
+                Sign In
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="text-sm text-center">
+            <Link href="/register" className="text-tertiary hover:underline">
+              Don't have an account? Register
+            </Link>
+          </div>
+          <div className="text-sm text-center">
+            <Link href="/" className="text-muted-foreground hover:text-foreground hover:underline">
+              ← Back to Home
+            </Link>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
