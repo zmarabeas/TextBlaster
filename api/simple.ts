@@ -26,14 +26,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  // Payment endpoint placeholder
-  if (path === '/create-payment-intent' && method === 'POST') {
-    return res.status(501).json({ 
-      message: 'Payment processing not yet implemented',
-      note: 'Stripe integration will be added after successful deployment'
-    });
-  }
-
   // Default response
   return res.status(404).json({ message: 'Endpoint not found', path, method });
 }

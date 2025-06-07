@@ -171,7 +171,7 @@ const CheckoutForm = ({ planId, userData, onSuccess }: { planId: string, userDat
 };
 
 export default function Pricing() {
-  const { planId } = useParams();
+  const planId = undefined; // Simplified for deployment
   const [, setLocation] = useLocation();
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(true);

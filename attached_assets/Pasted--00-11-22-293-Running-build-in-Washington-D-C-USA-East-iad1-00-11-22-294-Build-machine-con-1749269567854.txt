@@ -1,0 +1,115 @@
+[00:11:22.293] Running build in Washington, D.C., USA (East) – iad1
+[00:11:22.294] Build machine configuration: 2 cores, 8 GB
+[00:11:22.308] Cloning github.com/zmarabeas/TextBlaster (Branch: main, Commit: 2dc68ca)
+[00:11:22.654] Cloning completed: 346.000ms
+[00:11:25.074] Restored build cache from previous deployment (BVQAZjsxRYdYMBEhrgTeSNyfdvrb)
+[00:11:25.633] Running "vercel build"
+[00:11:26.057] Vercel CLI 42.2.0
+[00:11:26.957] Installing dependencies...
+[00:11:28.456] 
+[00:11:28.457] up to date in 1s
+[00:11:28.458] 
+[00:11:28.458] 76 packages are looking for funding
+[00:11:28.458]   run `npm fund` for details
+[00:11:28.709] ▲ [WARNING] Duplicate key "skipLibCheck" in object literal [duplicate-object-key]
+[00:11:28.710] 
+[00:11:28.710]     tsconfig.json:15:4:
+[00:11:28.710]       15 │     "skipLibCheck": true,
+[00:11:28.712]          ╵     ~~~~~~~~~~~~~~
+[00:11:28.712] 
+[00:11:28.712]   The original key "skipLibCheck" is here:
+[00:11:28.712] 
+[00:11:28.713]     tsconfig.json:11:4:
+[00:11:28.713]       11 │     "skipLibCheck": true,
+[00:11:28.713]          ╵     ~~~~~~~~~~~~~~
+[00:11:28.713] 
+[00:11:28.773] [36mvite v5.4.14 [32mbuilding for production...[36m[39m
+[00:11:28.825] transforming...
+[00:11:29.147] Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+[00:11:29.147]   npx update-browserslist-db@latest
+[00:11:29.147]   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[00:11:36.255] [32m✓[39m 2668 modules transformed.
+[00:11:36.899] rendering chunks...
+[00:11:36.914] computing gzip size...
+[00:11:36.942] [2m../dist/public/[22m[32mindex.html                           [39m[1m[2m    1.45 kB[22m[1m[22m[2m │ gzip:   0.84 kB[22m
+[00:11:36.942] [2m../dist/public/[22m[2massets/[22m[32mTEXT_BLAST_LOGO-x1WWG6ZN.png  [39m[1m[2m  126.47 kB[22m[1m[22m
+[00:11:36.942] [2m../dist/public/[22m[2massets/[22m[35mindex-BVSu_oDA.css            [39m[1m[2m   86.68 kB[22m[1m[22m[2m │ gzip:  14.48 kB[22m
+[00:11:36.943] [2m../dist/public/[22m[2massets/[22m[36mindex-DP7GHQ4z.js             [39m[1m[33m1,023.67 kB[39m[22m[2m │ gzip: 293.29 kB[22m
+[00:11:36.943] [33m
+[00:11:36.945] (!) Some chunks are larger than 500 kB after minification. Consider:
+[00:11:36.945] - Using dynamic import() to code-split the application
+[00:11:36.947] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[00:11:36.948] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[00:11:36.948] [32m✓ built in 8.15s[39m
+[00:11:37.194] Using TypeScript 5.6.3 (local user-provided)
+[00:11:42.905] Using TypeScript 5.6.3 (local user-provided)
+[00:11:43.903] api/index.ts(8,3): error TS2322: Type '"2023-10-16"' is not assignable to type '"2025-05-28.basil"'.
+[00:11:43.904] 
+[00:11:45.178] server/storage.ts(97,11): error TS2739: Type '{ id: number; createdAt: Date; updatedAt: Date; credits: number; stripeCustomerId: null; stripeSubscriptionId: null; subscriptionTier: string; }' is missing the following properties from type '{ id: number; username: string; password: string; email: string; fullName: string; credits: number; createdAt: Date; updatedAt: Date; stripeCustomerId: string; stripeSubscriptionId: string; subscriptionTier: string; }': username, password, email, fullName
+[00:11:45.180] server/storage.ts(161,11): error TS2739: Type '{ id: number; createdAt: Date; updatedAt: Date; lastContactedAt: null; email: any; tags: any; notes: any; }' is missing the following properties from type '{ id: number; email: string; createdAt: Date; updatedAt: Date; userId: number; firstName: string; lastName: string; phone: string; tags: string[]; notes: string; lastContactedAt: Date; }': userId, firstName, lastName, phone
+[00:11:45.182] server/storage.ts(167,25): error TS2339: Property 'email' does not exist on type '{}'.
+[00:11:45.183] server/storage.ts(168,24): error TS2339: Property 'tags' does not exist on type '{}'.
+[00:11:45.183] server/storage.ts(169,25): error TS2339: Property 'notes' does not exist on type '{}'.
+[00:11:45.183] server/storage.ts(224,11): error TS2739: Type '{ id: number; sentAt: Date; twilioSid: null; errorCode: null; errorMessage: null; mediaUrls: null; batchId: any; }' is missing the following properties from type '{ id: number; status: string; userId: number; clientId: number; content: string; direction: string; sentAt: Date; twilioSid: string; errorCode: string; errorMessage: string; batchId: string; mediaUrls: string[]; }': status, userId, clientId, content, direction
+[00:11:45.184] server/storage.ts(232,28): error TS2339: Property 'batchId' does not exist on type '{}'.
+[00:11:45.184] server/storage.ts(304,11): error TS2739: Type '{ id: number; createdAt: Date; updatedAt: Date; }' is missing the following properties from type '{ id: number; name: string; createdAt: Date; updatedAt: Date; userId: number; content: string; }': name, userId, content
+[00:11:45.185] server/storage.ts(427,55): error TS2769: No overload matches this call.
+[00:11:45.185]   Overload 1 of 2, '(value: { username: string | SQL<unknown> | Placeholder<string, any>; password: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<...>; fullName: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+[00:11:45.192]     Argument of type '{}' is not assignable to parameter of type '{ username: string | SQL<unknown> | Placeholder<string, any>; password: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<...>; fullName: string | ... 1 more ... | Placeholder<...>; }'.
+[00:11:45.192]       Type '{}' is missing the following properties from type '{ username: string | SQL<unknown> | Placeholder<string, any>; password: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<...>; fullName: string | ... 1 more ... | Placeholder<...>; }': username, password, email, fullName
+[00:11:45.192]   Overload 2 of 2, '(values: { username: string | SQL<unknown> | Placeholder<string, any>; password: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<...>; fullName: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+[00:11:45.192]     Argument of type '{}' is not assignable to parameter of type '{ username: string | SQL<unknown> | Placeholder<string, any>; password: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<...>; fullName: string | ... 1 more ... | Placeholder<...>; }[]'.
+[00:11:45.192]       Type '{}' is missing the following properties from type '{ username: string | SQL<unknown> | Placeholder<string, any>; password: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<...>; fullName: string | ... 1 more ... | Placeholder<...>; }[]': length, pop, push, concat, and 35 more.
+[00:11:45.192] server/storage.ts(438,14): error TS2353: Object literal may only specify known properties, and 'stripeCustomerId' does not exist in type '{ username?: string | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}>; password?: string | SQL<unknown> | PgColumn<...>; email?: string | ... 1 more ... | PgColumn<...>; fullName?: string | ... 1 more ... | PgColumn<...>; }'.
+[00:11:45.192] server/storage.ts(447,9): error TS2353: Object literal may only specify known properties, and 'stripeCustomerId' does not exist in type '{ username?: string | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}>; password?: string | SQL<unknown> | PgColumn<...>; email?: string | ... 1 more ... | PgColumn<...>; fullName?: string | ... 1 more ... | PgColumn<...>; }'.
+[00:11:45.192] server/storage.ts(466,57): error TS2769: No overload matches this call.
+[00:11:45.192]   Overload 1 of 2, '(value: { userId: number | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; lastName: string | SQL<unknown> | Placeholder<...>; phone: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+[00:11:45.192]     Argument of type '{}' is not assignable to parameter of type '{ userId: number | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; lastName: string | SQL<unknown> | Placeholder<...>; phone: string | ... 1 more ... | Placeholder<...>; }'.
+[00:11:45.192]       Type '{}' is missing the following properties from type '{ userId: number | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; lastName: string | SQL<unknown> | Placeholder<...>; phone: string | ... 1 more ... | Placeholder<...>; }': userId, firstName, lastName, phone
+[00:11:45.192]   Overload 2 of 2, '(values: { userId: number | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; lastName: string | SQL<unknown> | Placeholder<...>; phone: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+[00:11:45.192]     Argument of type '{}' is not assignable to parameter of type '{ userId: number | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; lastName: string | SQL<unknown> | Placeholder<...>; phone: string | ... 1 more ... | Placeholder<...>; }[]'.
+[00:11:45.192]       Type '{}' is missing the following properties from type '{ userId: number | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; lastName: string | SQL<unknown> | Placeholder<...>; phone: string | ... 1 more ... | Placeholder<...>; }[]': length, pop, push, concat, and 35 more.
+[00:11:45.193] server/storage.ts(506,58): error TS2769: No overload matches this call.
+[00:11:45.193]   Overload 1 of 2, '(value: { status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+[00:11:45.193]     Argument of type '{}' is not assignable to parameter of type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }'.
+[00:11:45.193]       Type '{}' is missing the following properties from type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }': status, userId, clientId, content, direction
+[00:11:45.193]   Overload 2 of 2, '(values: { status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+[00:11:45.193]     Argument of type '{}' is not assignable to parameter of type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }[]'.
+[00:11:45.193]       Type '{}' is missing the following properties from type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }[]': length, pop, push, concat, and 35 more.
+[00:11:45.193] server/storage.ts(534,9): error TS2353: Object literal may only specify known properties, and 'errorCode' does not exist in type '{ status?: string | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}>; userId?: number | SQL<unknown> | PgColumn<ColumnBaseConfig<...>, {}, {}>; clientId?: number | ... 1 more ... | PgColumn<...>; content?: string | ... 1 more ... | PgColumn<...>; direction?: string | ... 1 more ... | PgColum...'.
+[00:11:45.193] server/storage.ts(546,58): error TS2769: No overload matches this call.
+[00:11:45.193]   Overload 1 of 2, '(value: { status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+[00:11:45.193]     Argument of type '{ batchId: string; }[]' is not assignable to parameter of type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }'.
+[00:11:45.193]       Type '{ batchId: string; }[]' is missing the following properties from type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }': status, userId, clientId, content, direction
+[00:11:45.193]   Overload 2 of 2, '(values: { status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+[00:11:45.193]     Argument of type '{ batchId: string; }[]' is not assignable to parameter of type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }[]'.
+[00:11:45.193]       Type '{ batchId: string; }' is missing the following properties from type '{ status: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<...>; content: string | ... 1 more ... | Placeholder<...>; direction: string | ... 1 more ... | Placeholder<...>; }': status, userId, clientId, content, direction
+[00:11:45.193] server/storage.ts(558,66): error TS2769: No overload matches this call.
+[00:11:45.193]   Overload 1 of 2, '(value: { name: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; content: string | SQL<unknown> | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+[00:11:45.193]     Argument of type '{}' is not assignable to parameter of type '{ name: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; content: string | SQL<unknown> | Placeholder<string, any>; }'.
+[00:11:45.193]       Type '{}' is missing the following properties from type '{ name: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; content: string | SQL<unknown> | Placeholder<string, any>; }': name, userId, content
+[00:11:45.193]   Overload 2 of 2, '(values: { name: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; content: string | SQL<unknown> | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+[00:11:45.193]     Argument of type '{}' is not assignable to parameter of type '{ name: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; content: string | SQL<unknown> | Placeholder<string, any>; }[]'.
+[00:11:45.193]       Type '{}' is missing the following properties from type '{ name: string | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; content: string | SQL<unknown> | Placeholder<string, any>; }[]': length, pop, push, concat, and 35 more.
+[00:11:45.193] server/storage.ts(587,68): error TS2769: No overload matches this call.
+[00:11:45.194]   Overload 1 of 2, '(value: { type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+[00:11:45.194]     Argument of type '{}' is not assignable to parameter of type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }'.
+[00:11:45.194]       Type '{}' is missing the following properties from type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }': type, amount, userId
+[00:11:45.194]   Overload 2 of 2, '(values: { type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+[00:11:45.194]     Argument of type '{}' is not assignable to parameter of type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }[]'.
+[00:11:45.194]       Type '{}' is missing the following properties from type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }[]': length, pop, push, concat, and 35 more.
+[00:11:45.194] server/storage.ts(599,68): error TS2769: No overload matches this call.
+[00:11:45.194]   Overload 1 of 2, '(value: { type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+[00:11:45.194]     Argument of type '{}' is not assignable to parameter of type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }'.
+[00:11:45.194]       Type '{}' is missing the following properties from type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }': type, amount, userId
+[00:11:45.194]   Overload 2 of 2, '(values: { type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+[00:11:45.194]     Argument of type '{}' is not assignable to parameter of type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }[]'.
+[00:11:45.194]       Type '{}' is missing the following properties from type '{ type: string | SQL<unknown> | Placeholder<string, any>; amount: number | SQL<unknown> | Placeholder<string, any>; userId: number | SQL<unknown> | Placeholder<string, any>; }[]': length, pop, push, concat, and 35 more.
+[00:11:45.194] 
+[00:11:46.432] Build Completed in /vercel/output [19s]
+[00:11:46.567] Deploying outputs...
+[00:11:50.261] 
+[00:11:50.410] Deployment completed
+[00:12:17.525] Uploading build cache [112.30 MB]...
+[00:12:18.748] Build cache uploaded: 1.227s
+[00:12:20.957] Exiting build container
